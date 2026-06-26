@@ -15,6 +15,7 @@ import { describeAction, type LastAction } from "@/lib/games/love-letter/describ
 import { Scoreboard } from "./Scoreboard";
 import { DiscardPile } from "./DiscardPile";
 import { RulesPanel } from "./RulesPanel";
+import { CardFace } from "./CardFace";
 
 const GUESS_VALUES: CardValue[] = [2, 3, 4, 5, 6, 7, 8]; // Guarda não pode chutar 1
 
@@ -146,7 +147,9 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
       />
 
       {actionText && (
-        <p className="rounded bg-gray-100 px-3 py-2 text-sm text-gray-700">{actionText}</p>
+        <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300">
+          {actionText}
+        </p>
       )}
 
       <DiscardPile discardPile={discardPile} />
@@ -189,7 +192,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
 
       {/* Mão do jogador + controles de jogada */}
       {status === "playing" && (
-        <div className="rounded-lg border border-gray-200 p-4">
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
           <h2 className="mb-2 font-semibold">Sua mão</h2>
           {me?.eliminated_this_round ? (
             <p className="text-sm text-gray-500">
@@ -198,9 +201,8 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
           ) : myHand.length === 0 ? (
             <p className="text-sm text-gray-400">Sem cartas no momento...</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {myHand.map((c, i) => {
-                const def = CARD_DEFINITIONS[c];
                 const canPlay = isMyTurn && playable.includes(c);
                 const selected = selectedCard === c;
                 return (
@@ -213,14 +215,11 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
                       setSelectedTarget(null);
                       setSelectedGuess(null);
                     }}
-                    className={`w-32 rounded-lg border p-3 text-left transition ${
-                      selected ? "border-black ring-2 ring-black" : "border-gray-300"
-                    } ${canPlay ? "hover:border-black" : "cursor-not-allowed opacity-50"}`}
+                    className={`rounded-xl transition ${
+                      selected ? "ring-4 ring-amber-400" : ""
+                    } ${canPlay ? "hover:-translate-y-1 hover:shadow-lg" : "cursor-not-allowed opacity-50"}`}
                   >
-                    <p className="font-bold">
-                      {def.value} · {def.name}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-600">{def.description}</p>
+                    <CardFace value={c} size="lg" showDescription />
                   </button>
                 );
               })}
@@ -235,7 +234,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
 
           {/* Escolha de alvo / palpite quando uma carta está selecionada */}
           {isMyTurn && selectedCard !== null && (
-            <div className="mt-4 flex flex-col gap-3 border-t border-gray-200 pt-3">
+            <div className="mt-4 flex flex-col gap-3 border-t border-white/10 pt-3">
               {cardRequiresTarget(selectedCard) && targetsForSelected.length > 0 && (
                 <div>
                   <p className="mb-1 text-sm font-medium">Alvo:</p>
@@ -244,8 +243,10 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
                       <button
                         key={seat}
                         onClick={() => setSelectedTarget(seat)}
-                        className={`rounded border px-3 py-1 text-sm ${
-                          selectedTarget === seat ? "border-black bg-black text-white" : "border-gray-300"
+                        className={`rounded-lg border px-3 py-1 text-sm ${
+                          selectedTarget === seat
+                            ? "border-amber-400 bg-amber-400 font-semibold text-black"
+                            : "border-white/20 hover:border-white/40"
                         }`}
                       >
                         {nameForSeat(seat)}
@@ -270,8 +271,10 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
                       <button
                         key={g}
                         onClick={() => setSelectedGuess(g)}
-                        className={`rounded border px-2 py-1 text-sm ${
-                          selectedGuess === g ? "border-black bg-black text-white" : "border-gray-300"
+                        className={`rounded-lg border px-2 py-1 text-sm ${
+                          selectedGuess === g
+                            ? "border-amber-400 bg-amber-400 font-semibold text-black"
+                            : "border-white/20 hover:border-white/40"
                         }`}
                         title={CARD_DEFINITIONS[g].name}
                       >
@@ -286,14 +289,14 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
                 <button
                   onClick={confirmPlay}
                   disabled={pending}
-                  className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+                  className="rounded-lg bg-amber-500 px-4 py-2 font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
                 >
                   {pending ? "Jogando..." : `Jogar ${CARD_DEFINITIONS[selectedCard].name}`}
                 </button>
                 <button
                   onClick={resetSelection}
                   disabled={pending}
-                  className="rounded border border-gray-300 px-4 py-2"
+                  className="rounded-lg border border-white/20 px-4 py-2 hover:border-white/40"
                 >
                   Cancelar
                 </button>

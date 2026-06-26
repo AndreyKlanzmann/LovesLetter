@@ -17,10 +17,10 @@ export function Scoreboard({
   myUserId: string | null;
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 p-3">
+    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="font-semibold">Placar</h2>
-        <span className="text-xs text-gray-500">primeiro a {MATCH_TARGET} vence</span>
+        <span className="text-xs text-gray-400">primeiro a {MATCH_TARGET} vence</span>
       </div>
       <ul className="flex flex-col gap-1">
         {players.map((p) => {
@@ -30,8 +30,8 @@ export function Scoreboard({
           return (
             <li
               key={p.id}
-              className={`flex items-center justify-between rounded px-2 py-1 ${
-                isTurn ? "bg-amber-100" : ""
+              className={`flex items-center justify-between rounded-lg px-2 py-1 ${
+                isTurn ? "bg-amber-500/20 ring-1 ring-amber-400/40" : ""
               }`}
             >
               <span className="flex items-center gap-2">
