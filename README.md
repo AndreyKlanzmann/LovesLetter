@@ -59,6 +59,34 @@ npm run dev
 
 Abra http://localhost:3000, crie uma sala, compartilhe o código com os 2 amigos.
 
+## Como a partida funciona (Server Actions + motor)
+
+Toda escrita de estado de jogo passa por **Server Actions** (`lib/games/love-letter/actions.ts`),
+que rodam só no servidor:
+
+- A **identidade** de quem joga vem do cookie de sessão (RLS) — o client não
+  escolhe "qual assento" está jogando; o servidor descobre pelo `auth.uid()`.
+- A **leitura/escrita do estado** usa o client **service-role** (ignora RLS),
+  porque o motor precisa ver as mãos e o baralho de todos para resolver efeitos
+  como Padre, Rei e Barão. O navegador continua sempre restrito pela RLS.
+- O motor puro (`engine/`) é chamado pela action: `resolvePlay()` valida a
+  jogada, aplica o efeito modular daquela carta e decide o fim da rodada. A
+  action então persiste o resultado nas tabelas (`persistence.ts`).
+- A revelação do **Padre** (ver a mão de um oponente) volta apenas como retorno
+  da action para quem jogou — **nunca** é gravada em nenhuma coluna legível por
+  outro jogador.
+
+> Nota sobre a decisão de arquitetura: as RPCs SQL (`SECURITY DEFINER`) foram
+> usadas só para as operações atômicas de lobby (`create_room`/`join_room`). A
+> lógica de jogo ficou em Server Actions com service-role em vez de RPC, para
+> manter cada efeito como um arquivo TypeScript modular (um por carta), como
+> pedido — em vez de espalhar a regra em PL/pgSQL.
+
 ## Status atual
 
-Implementado: configuração do Supabase, lobby (criar/entrar sala, realtime de jogadores), e o motor de regras do Love Letter (baralho, distribuição, validação, os 8 efeitos modulares). **Ainda não implementado**: a tela e as Server Actions da partida em si (jogar carta, ver mão, painel de regras, placar) — próximo passo.
+Implementado: configuração do Supabase, lobby (criar/entrar sala, realtime de
+jogadores), o motor de regras do Love Letter (baralho, distribuição, validação,
+os 8 efeitos modulares), as Server Actions da partida (iniciar rodada, jogar
+carta, placar de melhor-de-3) e a tela de jogo (mão própria, vez atual, pilha de
+descarte, indicador de proteção da Aia, placar e painel de regras sempre
+acessível).

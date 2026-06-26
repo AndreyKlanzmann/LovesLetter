@@ -43,16 +43,21 @@ export function validateMove(round: RoundState, input: PlayInput): ValidationFai
   const effect = CARD_EFFECTS[playedCard];
 
   if (effect.requiresTarget) {
+    const validTargets = effect.validTargets(round, actingSeat);
+    // Regra oficial: se TODOS os alvos possíveis estão protegidos (Aia), a
+    // carta é jogada sem efeito e sem alvo — não é jogada ilegal.
+    if (validTargets.length === 0) {
+      return null;
+    }
     if (targetSeat === undefined) {
       return { code: "target_required", message: "Essa carta exige escolher um alvo." };
     }
-    const validTargets = effect.validTargets(round, actingSeat);
     if (!validTargets.includes(targetSeat)) {
       return { code: "invalid_target", message: "Alvo inválido (eliminado, protegido ou inexistente)." };
     }
   }
 
-  if (effect.requiresGuess) {
+  if (effect.requiresGuess && effect.validTargets(round, actingSeat).length > 0) {
     if (guessedValue === undefined) {
       return { code: "guess_required", message: "O Guarda exige um palpite de valor." };
     }

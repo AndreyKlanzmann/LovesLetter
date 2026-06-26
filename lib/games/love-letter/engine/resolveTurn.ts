@@ -28,12 +28,22 @@ export function resolvePlay(round: RoundState, input: PlayInput): ResolvePlayRes
   round.discardPile.push(input.playedCard);
 
   const effect = CARD_EFFECTS[input.playedCard];
-  const result = effect.resolve({
-    round,
-    actingSeat: input.actingSeat,
-    targetSeat: input.targetSeat,
-    guessedValue: input.guessedValue,
-  });
+  const targets = effect.requiresTarget
+    ? effect.validTargets(round, input.actingSeat)
+    : [];
+
+  // Carta que exige alvo mas não tem nenhum legal (todos protegidos pela Aia):
+  // é jogada sem efeito. Mantém os efeitos individuais simples — eles nunca
+  // precisam tratar "sem alvo".
+  const result: EffectResult =
+    effect.requiresTarget && targets.length === 0
+      ? { log: { type: "fizzle", actingSeat: input.actingSeat } }
+      : effect.resolve({
+          round,
+          actingSeat: input.actingSeat,
+          targetSeat: input.targetSeat,
+          guessedValue: input.guessedValue,
+        });
 
   const { ended, winnerSeat } = checkRoundEnd(round);
   if (ended) {

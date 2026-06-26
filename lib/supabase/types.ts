@@ -71,6 +71,17 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["player_hands"]["Row"]>;
         Relationships: [];
       };
+      round_decks: {
+        Row: {
+          room_id: string;
+          remaining_cards: number[];
+          removed_card: number | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["round_decks"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["round_decks"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {

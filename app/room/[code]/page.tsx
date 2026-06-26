@@ -7,6 +7,8 @@ import { ensureAnonSession } from "@/lib/supabase/ensureAnonSession";
 import { joinRoom } from "@/lib/rooms/joinRoom";
 import { useRoomChannel } from "@/lib/rooms/useRoomChannel";
 import { PlayerList } from "@/components/lobby/PlayerList";
+import { GameBoard } from "@/components/game/GameBoard";
+import { startRound } from "@/lib/games/love-letter/actions";
 
 export default function RoomPage() {
   const params = useParams<{ code: string }>();
@@ -84,28 +86,49 @@ export default function RoomPage() {
 
 function RoomLobby({ roomId, code }: { roomId: string; code: string }) {
   const { room, players, loading } = useRoomChannel(roomId);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
 
   if (loading || !room) {
     return <main className="mx-auto max-w-md px-6 py-16">Carregando sala...</main>;
+  }
+
+  // Assim que a partida começa, todos os clients trocam para o tabuleiro
+  // (room.status muda em tempo real via useRoomChannel).
+  if (room.status === "playing" || room.status === "finished") {
+    return <GameBoard roomId={roomId} code={code} />;
+  }
+
+  async function handleStart() {
+    setStartError(null);
+    setStarting(true);
+    const res = await startRound(roomId);
+    setStarting(false);
+    if (!res.ok) setStartError(res.error);
   }
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-6 px-6 py-16">
       <div>
         <h1 className="text-xl font-bold">Sala {code}</h1>
-        <p className="text-sm text-gray-500">
-          {room.status === "lobby"
-            ? "Aguardando jogadores..."
-            : `Status: ${room.status}`}
-        </p>
+        <p className="text-sm text-gray-500">Aguardando jogadores...</p>
       </div>
       <PlayerList players={players} maxPlayers={room.max_players} />
-      {room.status === "lobby" && (
-        <p className="text-sm text-gray-500">
-          Compartilhe o código <strong>{code}</strong> com seus amigos. A partida começa
-          automaticamente quando os 3 jogadores entrarem.
-        </p>
-      )}
+      <p className="text-sm text-gray-500">
+        Compartilhe o código <strong>{code}</strong> com seus amigos.
+      </p>
+      <button
+        onClick={handleStart}
+        disabled={starting || players.length < 2}
+        className="rounded bg-black px-3 py-2 text-white disabled:opacity-50"
+      >
+        {starting
+          ? "Iniciando..."
+          : players.length < 2
+            ? "Aguardando ao menos 2 jogadores"
+            : `Começar partida (${players.length} jogadores)`}
+      </button>
+      {startError && <p className="text-sm text-red-600">{startError}</p>}
     </main>
   );
 }
