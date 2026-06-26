@@ -16,6 +16,7 @@ import { Scoreboard } from "./Scoreboard";
 import { DiscardPile } from "./DiscardPile";
 import { RulesPanel } from "./RulesPanel";
 import { CardFace } from "./CardFace";
+import { CardTracker } from "./CardTracker";
 
 const GUESS_VALUES: CardValue[] = [2, 3, 4, 5, 6, 7, 8]; // Guarda não pode chutar 1
 
@@ -153,6 +154,8 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
       )}
 
       <DiscardPile discardPile={discardPile} />
+
+      <CardTracker roomId={roomId} round={gameState.round_number} />
 
       {/* Resultado privado do Padre — só este jogador vê. */}
       {reveal && (
