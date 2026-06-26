@@ -92,6 +92,26 @@ alter table public.game_states    enable row level security;
 alter table public.player_hands   enable row level security;
 alter table public.round_decks    enable row level security;
 
+-- --- helper: "sou membro desta sala?" --------------------------------------
+-- IMPORTANTE: uma policy de room_players NÃO pode consultar room_players
+-- diretamente — o Postgres reaplica a RLS na subquery e cai em recursão
+-- infinita ("infinite recursion detected in policy for relation room_players").
+-- A saída padrão no Supabase é encapsular essa checagem numa função
+-- SECURITY DEFINER: ela roda como dono da tabela e por isso ignora a RLS na
+-- leitura interna, quebrando o ciclo. Reusada pelas 3 policies abaixo.
+create or replace function public.is_room_member(p_room_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists(
+    select 1 from public.room_players
+    where room_id = p_room_id and user_id = auth.uid()
+  );
+$$;
+
 -- --- rooms -----------------------------------------------------------------
 -- SELECT: só quem já é jogador da sala (ou o host) pode ver a linha da sala.
 -- Importante: não existe policy de SELECT "ver por código" — descobrir uma
@@ -103,7 +123,7 @@ create policy "rooms_select_members"
   to authenticated
   using (
     host_id = auth.uid()
-    or id in (select room_id from public.room_players where user_id = auth.uid())
+    or public.is_room_member(id)
   );
 -- Não há policy de INSERT/UPDATE/DELETE para authenticated: criação de sala
 -- acontece via RPC create_room() (SECURITY DEFINER), que cria a sala e já
@@ -111,15 +131,13 @@ create policy "rooms_select_members"
 
 -- --- room_players ------------------------------------------------------
 -- SELECT: um jogador vê todas as linhas (todos os jogadores) das salas onde
--- ele próprio também é jogador. Esse é o padrão "auto-referencial" comum em
--- RLS do Supabase: a subquery roda contra a mesma tabela, mas filtrando só
--- pela linha do próprio usuário — não é recursivo, é apenas "ache as salas
--- em que EU estou, então mostre todo mundo nessas salas".
+-- ele próprio também é jogador. A checagem passa pela função is_room_member
+-- (SECURITY DEFINER) justamente para não recursar na própria tabela.
 create policy "room_players_select_same_room"
   on public.room_players for select
   to authenticated
   using (
-    room_id in (select room_id from public.room_players where user_id = auth.uid())
+    public.is_room_member(room_id)
   );
 -- UPDATE: cada jogador só atualiza a própria linha (ex.: nickname, presença).
 create policy "room_players_update_self"
@@ -143,7 +161,7 @@ create policy "game_states_select_members"
   on public.game_states for select
   to authenticated
   using (
-    room_id in (select room_id from public.room_players where user_id = auth.uid())
+    public.is_room_member(room_id)
   );
 -- Sem policies de INSERT/UPDATE/DELETE: todo o avanço de estado (distribuir
 -- cartas, jogar carta, aplicar efeito) passa pelas RPCs do motor de jogo.
