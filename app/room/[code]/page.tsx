@@ -56,26 +56,29 @@ export default function RoomPage() {
   }
 
   if (checking) {
-    return <main className="mx-auto max-w-md px-6 py-16">Carregando...</main>;
+    return <main className="mx-auto max-w-md px-6 py-16 text-amber-100/70">Carregando...</main>;
   }
 
   if (needsNickname) {
     return (
-      <main className="mx-auto flex max-w-md flex-col gap-4 px-6 py-16">
-        <h1 className="text-xl font-bold">Entrar na sala {code}</h1>
-        <form onSubmit={handleJoin} className="flex flex-col gap-3">
+      <main className="mx-auto flex max-w-md flex-col gap-4 px-4 py-16 sm:px-6">
+        <h1 className="font-display text-2xl text-amber-300">Entrar na sala {code}</h1>
+        <form onSubmit={handleJoin} className="panel-wood flex flex-col gap-3 rounded-xl p-4">
           <input
-            className="rounded border px-3 py-2"
+            className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 outline-none placeholder:text-gray-500 focus:border-amber-400/60"
             placeholder="Seu nome"
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
             maxLength={20}
             required
           />
-          <button type="submit" className="rounded bg-black px-3 py-2 text-white">
+          <button
+            type="submit"
+            className="rounded-lg bg-amber-500 px-3 py-2 font-semibold text-black hover:bg-amber-400"
+          >
             Entrar
           </button>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-400">{error}</p>}
         </form>
       </main>
     );
@@ -88,9 +91,16 @@ function RoomLobby({ roomId, code }: { roomId: string; code: string }) {
   const { room, players, loading } = useRoomChannel(roomId);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  function copyCode() {
+    navigator.clipboard?.writeText(code).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
 
   if (loading || !room) {
-    return <main className="mx-auto max-w-md px-6 py-16">Carregando sala...</main>;
+    return <main className="mx-auto max-w-md px-6 py-16 text-amber-100/70">Carregando sala...</main>;
   }
 
   // Assim que a partida começa, todos os clients trocam para o tabuleiro
@@ -108,19 +118,27 @@ function RoomLobby({ roomId, code }: { roomId: string; code: string }) {
   }
 
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-6 px-6 py-16">
-      <div>
-        <h1 className="text-xl font-bold">Sala {code}</h1>
-        <p className="text-sm text-gray-500">Aguardando jogadores...</p>
+    <main className="mx-auto flex max-w-md flex-col gap-6 px-4 py-16 sm:px-6">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h1 className="font-display text-2xl text-amber-300">Sala {code}</h1>
+          <p className="text-sm text-amber-100/60">Aguardando jogadores...</p>
+        </div>
+        <button
+          onClick={copyCode}
+          className="rounded-lg border border-white/20 px-3 py-1.5 text-sm hover:border-white/40"
+        >
+          {copied ? "copiado!" : "copiar código"}
+        </button>
       </div>
       <PlayerList players={players} maxPlayers={room.max_players} />
-      <p className="text-sm text-gray-500">
-        Compartilhe o código <strong>{code}</strong> com seus amigos.
+      <p className="text-sm text-amber-100/60">
+        Compartilhe o código <strong className="text-amber-200">{code}</strong> com seus amigos.
       </p>
       <button
         onClick={handleStart}
         disabled={starting || players.length < 2}
-        className="rounded bg-black px-3 py-2 text-white disabled:opacity-50"
+        className="rounded-lg bg-amber-500 px-3 py-2 font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
       >
         {starting
           ? "Iniciando..."
@@ -128,7 +146,7 @@ function RoomLobby({ roomId, code }: { roomId: string; code: string }) {
             ? "Aguardando ao menos 2 jogadores"
             : `Começar partida (${players.length} jogadores)`}
       </button>
-      {startError && <p className="text-sm text-red-600">{startError}</p>}
+      {startError && <p className="text-sm text-red-400">{startError}</p>}
     </main>
   );
 }

@@ -19,6 +19,7 @@ import { CardFace } from "./CardFace";
 import { CardTracker } from "./CardTracker";
 import { PlayersTable } from "./PlayersTable";
 import { Table3DView } from "./three/Table3DView";
+import { CanvasErrorBoundary } from "./three/CanvasErrorBoundary";
 import { useTurnAlert } from "./useTurnAlert";
 import { useGameSounds } from "./useGameSounds";
 
@@ -40,6 +41,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
     () => typeof window === "undefined" || localStorage.getItem("ll-2d") !== "1"
   );
   const [openPanel, setOpenPanel] = useState<null | "score" | "tracker" | "discard">(null);
+  const [copied, setCopied] = useState(false);
 
   function toggleMute() {
     setMuted((m) => {
@@ -175,6 +177,8 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
 
   function copyCode() {
     navigator.clipboard?.writeText(code).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   }
 
   // Texto público de uma ação (resolve nomes pelos seats).
@@ -328,21 +332,28 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
         {/* Área da mesa 3D (tudo acima da barra de controles) */}
         <div className="relative min-h-0 flex-1">
         <div className="absolute inset-0">
-          <Table3DView
-            players={players}
-            currentTurnSeat={gameState.current_turn_seat}
-            protectedSeats={protectedSeats}
-            playing={status === "playing"}
-            myUserId={myUserId}
-            lastActorSeat={lastAction && lastAction.type !== "round_start" ? lastAction.seat : null}
-            deckCount={gameState.deck_count}
-            discardPile={discardPile}
-            myHand={myHand}
-            isMyTurn={isMyTurn}
-            playable={playable}
-            selectedCard={selectedCard}
-            onSelectCard={selectCard}
-          />
+          <CanvasErrorBoundary
+            onFallback={() => {
+              if (typeof window !== "undefined") localStorage.setItem("ll-2d", "1");
+              setView3d(false);
+            }}
+          >
+            <Table3DView
+              players={players}
+              currentTurnSeat={gameState.current_turn_seat}
+              protectedSeats={protectedSeats}
+              playing={status === "playing"}
+              myUserId={myUserId}
+              lastActorSeat={lastAction && lastAction.type !== "round_start" ? lastAction.seat : null}
+              deckCount={gameState.deck_count}
+              discardPile={discardPile}
+              myHand={myHand}
+              isMyTurn={isMyTurn}
+              playable={playable}
+              selectedCard={selectedCard}
+              onSelectCard={selectCard}
+            />
+          </CanvasErrorBoundary>
         </div>
 
         {/* HUD topo */}
@@ -354,7 +365,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
                 onClick={copyCode}
                 className="rounded border border-white/20 px-2 py-0.5 text-xs text-gray-300 hover:border-white/40"
               >
-                copiar
+                {copied ? "copiado!" : "copiar"}
               </button>
               <span className="text-xs text-gray-400">rodada {gameState.round_number}</span>
             </div>
@@ -482,7 +493,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
             title="Copiar código da sala"
             className="rounded border border-white/20 px-2 py-0.5 text-xs text-gray-300 hover:border-white/40"
           >
-            copiar
+            {copied ? "copiado!" : "copiar"}
           </button>
           <span className="text-sm text-gray-400">· rodada {gameState.round_number}</span>
         </div>
