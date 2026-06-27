@@ -249,6 +249,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
           lastActorSeat={lastAction && lastAction.type !== "round_start" ? lastAction.seat : null}
           deckCount={gameState.deck_count}
           discardPile={discardPile}
+          myHand={myHand}
         />
       ) : (
         <PlayersTable
