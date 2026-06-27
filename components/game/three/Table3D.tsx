@@ -464,7 +464,7 @@ function Scene(props: Table3DProps) {
       })}
 
       {/* Minha mão em leque (face para cima), clicável quando é minha vez. */}
-      <group position={[0, 0.04, 1.55]} rotation={[-0.5, 0, 0]} scale={0.95}>
+      <group position={[0, 0.12, 1.25]} rotation={[-0.38, 0, 0]} scale={0.82}>
         {myHand.map((v, i) => {
           const off = i - (myHand.length - 1) / 2;
           const canPlay = isMyTurn && playable.includes(v);
@@ -492,9 +492,9 @@ export default function Table3D(props: Table3DProps) {
     <div className="h-full w-full">
       <Canvas
         shadows
-        camera={{ position: [0, 3.3, 4.7], fov: 50 }}
+        camera={{ position: [0, 3.1, 5.0], fov: 50 }}
         dpr={[1, 2]}
-        onCreated={({ camera }) => camera.lookAt(0, -0.3, 0)}
+        onCreated={({ camera }) => camera.lookAt(0, -0.1, 0.2)}
       >
         <color attach="background" args={["#160e0b"]} />
         <fog attach="fog" args={["#160e0b", 8, 14]} />
