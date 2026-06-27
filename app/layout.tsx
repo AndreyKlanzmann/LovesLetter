@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Rye } from "next/font/google";
 import "./globals.css";
 
@@ -22,6 +22,12 @@ const rye = Rye({
 export const metadata: Metadata = {
   title: "Love Letter",
   description: "Love Letter multiplayer — jogue com os amigos",
+  appleWebApp: { capable: true, title: "Love Letter", statusBarStyle: "black-translucent" },
+  icons: { icon: "/icon-192.png", apple: "/apple-icon.png" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#160e0b",
 };
 
 export default function RootLayout({
