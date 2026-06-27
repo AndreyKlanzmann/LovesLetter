@@ -21,6 +21,9 @@ export interface LastAction {
   matchOver?: boolean;
   firstSeat?: number; // só em round_start
   prev?: LastAction | null; // a ação imediatamente anterior (1 nível só)
+  // Mãos reveladas no fim da rodada (showdown) — público, só preenchido quando
+  // roundEnded. Mostra a carta final de cada jogador ainda vivo.
+  reveal?: { seat: number; card: CardValue }[];
 }
 
 export function describeAction(

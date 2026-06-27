@@ -17,7 +17,9 @@ import { DiscardPile } from "./DiscardPile";
 import { RulesPanel } from "./RulesPanel";
 import { CardFace } from "./CardFace";
 import { CardTracker } from "./CardTracker";
+import { PlayersTable } from "./PlayersTable";
 import { useTurnAlert } from "./useTurnAlert";
+import { useGameSounds } from "./useGameSounds";
 
 const GUESS_VALUES: CardValue[] = [2, 3, 4, 5, 6, 7, 8]; // Guarda não pode chutar 1
 
@@ -30,9 +32,20 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
   const [error, setError] = useState<string | null>(null);
   const [reveal, setReveal] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [muted, setMuted] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("ll-muted") === "1"
+  );
 
-  // Alerta de "sua vez" (som + título). Calculado aqui, antes de qualquer
-  // return condicional, para respeitar as regras de hooks.
+  function toggleMute() {
+    setMuted((m) => {
+      const next = !m;
+      if (typeof window !== "undefined") localStorage.setItem("ll-muted", next ? "1" : "0");
+      return next;
+    });
+  }
+
+  // Alerta de "sua vez" (som + título) e sons de ação. Calculado aqui, antes
+  // de qualquer return condicional, para respeitar as regras de hooks.
   const meEarly = players.find((p) => p.user_id === myUserId);
   const isMyTurnAlert =
     !!gameState &&
@@ -40,7 +53,13 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
     !!meEarly &&
     gameState.current_turn_seat === meEarly.seat &&
     !meEarly.eliminated_this_round;
-  useTurnAlert(isMyTurnAlert);
+  useTurnAlert(isMyTurnAlert, muted);
+
+  const lastAct = gameState?.last_action as LastAction | null;
+  const soundKey = lastAct
+    ? `${lastAct.type}-${lastAct.seat}-${(gameState?.discard_pile as number[] | undefined)?.length ?? 0}`
+    : "";
+  useGameSounds(soundKey, gameState?.round_status ?? "", muted);
 
   if (loading || !gameState) {
     return <main className="mx-auto max-w-2xl px-6 py-16">Carregando partida...</main>;
@@ -171,7 +190,16 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
           </button>
           <span className="text-sm text-gray-400">· rodada {gameState.round_number}</span>
         </div>
-        <RulesPanel />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleMute}
+            title={muted ? "Ativar sons" : "Silenciar"}
+            className="rounded border border-white/20 px-2 py-1 text-sm hover:border-white/40"
+          >
+            {muted ? "🔇" : "🔊"}
+          </button>
+          <RulesPanel />
+        </div>
       </header>
 
       <p className="-mt-2 text-xs text-gray-400">
@@ -196,6 +224,15 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
         </div>
       )}
 
+      <PlayersTable
+        players={players}
+        currentTurnSeat={gameState.current_turn_seat}
+        protectedSeats={protectedSeats}
+        playing={status === "playing"}
+        myUserId={myUserId}
+        lastActorSeat={lastAction && lastAction.type !== "round_start" ? lastAction.seat : null}
+      />
+
       <DiscardPile discardPile={discardPile} />
 
       <CardTracker discardPile={discardPile} myHand={myHand} />
@@ -216,10 +253,28 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
           <p className="font-semibold">
             Fim da rodada — {lastAction?.winnerSeat != null ? nameForSeat(lastAction.winnerSeat) : "?"} venceu!
           </p>
+          {lastAction?.reveal && lastAction.reveal.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1 text-xs font-medium text-gray-600">Mãos reveladas:</p>
+              <div className="flex flex-wrap gap-2">
+                {lastAction.reveal.map((r) => (
+                  <div
+                    key={r.seat}
+                    className={`flex items-center gap-2 ${
+                      r.seat === lastAction.winnerSeat ? "" : "opacity-70"
+                    }`}
+                  >
+                    <span className="text-xs">{nameForSeat(r.seat)}</span>
+                    <CardFace value={r.card} size="sm" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <button
             onClick={nextRound}
             disabled={pending}
-            className="mt-2 rounded bg-black px-3 py-2 text-white disabled:opacity-50"
+            className="mt-3 rounded bg-black px-3 py-2 text-white disabled:opacity-50"
           >
             Próxima rodada
           </button>

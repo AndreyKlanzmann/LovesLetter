@@ -5,12 +5,12 @@ import { useEffect, useRef } from "react";
 // Avisa o jogador quando vira a vez dele: um "beep" curto (gerado na hora, sem
 // arquivo de áudio) e o título da aba piscando "▶ Sua vez!" enquanto a aba
 // estiver em segundo plano. Tudo client-side, nada compartilhado.
-export function useTurnAlert(isMyTurn: boolean) {
+export function useTurnAlert(isMyTurn: boolean, muted = false) {
   const wasMyTurn = useRef(false);
 
   // Beep na transição "não era minha vez" -> "agora é".
   useEffect(() => {
-    if (isMyTurn && !wasMyTurn.current) {
+    if (isMyTurn && !wasMyTurn.current && !muted) {
       try {
         const w = window as unknown as {
           AudioContext?: typeof AudioContext;
@@ -37,7 +37,7 @@ export function useTurnAlert(isMyTurn: boolean) {
       }
     }
     wasMyTurn.current = isMyTurn;
-  }, [isMyTurn]);
+  }, [isMyTurn, muted]);
 
   // Título piscando enquanto for a minha vez e a aba estiver escondida.
   useEffect(() => {

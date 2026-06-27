@@ -202,6 +202,11 @@ export async function playCard(
       const winnerSeat = result.winnerSeat!;
       const winnerUserId = seatToUserId.get(winnerSeat)!;
 
+      // Showdown: revela a carta final de cada jogador ainda vivo (público).
+      lastAction.reveal = round.players
+        .filter((p) => !p.eliminated && p.hand.length > 0)
+        .map((p) => ({ seat: p.seat, card: p.hand[0] }));
+
       // Incrementa o placar do vencedor da rodada.
       const { data: winnerRow } = await svc
         .from("room_players")

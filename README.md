@@ -59,6 +59,18 @@ npm run dev
 
 Abra http://localhost:3000, crie uma sala, compartilhe o código com os 2 amigos.
 
+### Testes do motor
+
+O motor de regras (puro, sem Supabase) tem testes com Vitest:
+
+```bash
+npm test
+```
+
+Cobrem os 8 efeitos, a regra obrigatória da Condessa, fim de rodada (1 jogador
+ou baralho vazio), revelação da carta do eliminado e o "fizzle" quando todos os
+alvos estão protegidos.
+
 ## Como a partida funciona (Server Actions + motor)
 
 Toda escrita de estado de jogo passa por **Server Actions** (`lib/games/love-letter/actions.ts`),
@@ -87,6 +99,6 @@ que rodam só no servidor:
 Implementado: configuração do Supabase, lobby (criar/entrar sala, realtime de
 jogadores), o motor de regras do Love Letter (baralho, distribuição, validação,
 os 8 efeitos modulares), as Server Actions da partida (iniciar rodada, jogar
-carta, placar de melhor-de-3) e a tela de jogo (mão própria, vez atual, pilha de
+carta, placar — primeiro a 5 vitórias) e a tela de jogo (mão própria, vez atual, pilha de
 descarte, indicador de proteção da Aia, placar e painel de regras sempre
 acessível).

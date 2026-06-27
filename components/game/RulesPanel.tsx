@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ALL_CARD_VALUES, CARD_DEFINITIONS } from "@/lib/games/love-letter/data/cards";
+import { MATCH_TARGET } from "@/lib/games/love-letter/config";
 
 // Painel de regras sempre acessível. Mostra os 8 efeitos a partir de
 // CARD_DEFINITIONS (a fonte de dados, separada do motor) — NUNCA revela
@@ -60,8 +61,8 @@ export function RulesPanel() {
             <p className="mt-4 text-xs text-gray-500">
               Início da rodada: 1 carta é removida do jogo (ninguém vê). Na sua vez,
               compre 1 carta (fica com 2) e jogue 1. A rodada acaba quando sobra 1
-              jogador ou o baralho acaba (vence a maior carta na mão). Primeiro a 3
-              vitórias vence a partida.
+              jogador ou o baralho acaba (vence a maior carta na mão). Primeiro a{" "}
+              {MATCH_TARGET} vitórias vence a partida.
             </p>
           </div>
         </div>
