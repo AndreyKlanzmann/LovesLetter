@@ -19,6 +19,8 @@ export interface LastAction {
   roundEnded?: boolean;
   winnerSeat?: number | null;
   matchOver?: boolean;
+  firstSeat?: number; // só em round_start
+  prev?: LastAction | null; // a ação imediatamente anterior (1 nível só)
 }
 
 export function describeAction(

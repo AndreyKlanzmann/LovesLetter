@@ -124,17 +124,21 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
     navigator.clipboard?.writeText(code).catch(() => {});
   }
 
-  // Texto da última ação (jogada anterior), público.
-  let actionText: string | null = null;
-  if (lastAction) {
-    if (lastAction.type === "round_start") {
-      actionText = `Nova rodada começou. ${nameForSeat(
-        (lastAction as unknown as { firstSeat: number }).firstSeat
-      )} joga primeiro.`;
-    } else {
-      actionText = describeAction(lastAction, nameForSeat);
+  // Texto público de uma ação (resolve nomes pelos seats).
+  function actionTextFor(a: LastAction | null | undefined): string | null {
+    if (!a) return null;
+    if (a.type === "round_start") {
+      return `Nova rodada começou. ${
+        a.firstSeat != null ? nameForSeat(a.firstSeat) : "?"
+      } joga primeiro.`;
     }
+    return describeAction(a, nameForSeat);
   }
+
+  // As duas últimas atividades (a atual e a anterior aninhada).
+  const recentActions = [actionTextFor(lastAction), actionTextFor(lastAction?.prev)].filter(
+    (t): t is string => t != null
+  );
 
   const targetsForSelected =
     selectedCard !== null && mySeat !== null
@@ -169,10 +173,15 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
         myUserId={myUserId}
       />
 
-      {actionText && (
-        <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300">
-          {actionText}
-        </p>
+      {recentActions.length > 0 && (
+        <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+          {recentActions.map((t, i) => (
+            <p key={i} className={`text-sm ${i === 0 ? "text-gray-200" : "text-gray-500"}`}>
+              {i === 0 ? "» " : "  "}
+              {t}
+            </p>
+          ))}
+        </div>
       )}
 
       <DiscardPile discardPile={discardPile} />

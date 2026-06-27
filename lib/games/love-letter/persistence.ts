@@ -85,6 +85,20 @@ export async function saveRound(
   const protectedSeats = round.players.filter((p) => p.protected).map((p) => p.seat);
   const now = new Date().toISOString();
 
+  // Aninha a ação anterior dentro da nova (só 1 nível), para a UI conseguir
+  // mostrar as duas últimas atividades sem precisar de uma coluna de histórico.
+  let mergedAction = lastAction;
+  if (lastAction) {
+    const { data: existing } = await svc
+      .from("game_states")
+      .select("last_action")
+      .eq("room_id", roomId)
+      .maybeSingle();
+    const current = existing?.last_action as Record<string, unknown> | null;
+    const prev = current ? { ...current, prev: null } : null;
+    mergedAction = { ...lastAction, prev };
+  }
+
   await svc.from("game_states").upsert({
     room_id: roomId,
     round_number: round.roundNumber,
@@ -93,7 +107,7 @@ export async function saveRound(
     discard_pile: round.discardPile,
     protected_seats: protectedSeats,
     round_status: dbStatus,
-    last_action: lastAction,
+    last_action: mergedAction,
     updated_at: now,
   });
 
