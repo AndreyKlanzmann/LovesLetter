@@ -180,7 +180,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
     <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6 sm:px-6 sm:py-10">
       <header className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold">Sala {code}</h1>
+          <h1 className="font-display text-xl text-amber-200">Sala {code}</h1>
           <button
             onClick={copyCode}
             title="Copiar código da sala"
@@ -202,10 +202,6 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
         </div>
       </header>
 
-      <p className="-mt-2 text-xs text-gray-400">
-        Baralho: {gameState.deck_count} carta{gameState.deck_count === 1 ? "" : "s"} para comprar
-      </p>
-
       <Scoreboard
         players={players}
         currentTurnSeat={gameState.current_turn_seat}
@@ -214,7 +210,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
       />
 
       {recentActions.length > 0 && (
-        <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+        <div className="panel-wood rounded-lg px-3 py-2">
           {recentActions.map((t, i) => (
             <p key={i} className={`text-sm ${i === 0 ? "text-gray-200" : "text-gray-500"}`}>
               {i === 0 ? "» " : "  "}
@@ -231,6 +227,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
         playing={status === "playing"}
         myUserId={myUserId}
         lastActorSeat={lastAction && lastAction.type !== "round_start" ? lastAction.seat : null}
+        deckCount={gameState.deck_count}
       />
 
       <DiscardPile discardPile={discardPile} />
@@ -302,12 +299,8 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
 
       {/* Mão do jogador + controles de jogada */}
       {status === "playing" && (
-        <div
-          className={`rounded-xl border border-white/10 bg-white/5 p-4 ${
-            isMyTurn ? "anim-turn" : ""
-          }`}
-        >
-          <h2 className="mb-2 font-semibold">
+        <div className={`panel-wood rounded-xl p-4 ${isMyTurn ? "anim-turn" : ""}`}>
+          <h2 className="mb-2 font-display text-amber-100">
             Sua mão {isMyTurn && <span className="text-amber-400">· sua vez!</span>}
           </h2>
           {me?.eliminated_this_round ? (

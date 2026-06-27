@@ -1,5 +1,6 @@
 import type { Database } from "@/lib/supabase/types";
 import { MATCH_TARGET } from "@/lib/games/love-letter/config";
+import { avatarForSeat } from "@/lib/games/love-letter/avatars";
 
 type RoomPlayerRow = Database["public"]["Tables"]["room_players"]["Row"];
 
@@ -17,7 +18,7 @@ export function Scoreboard({
   myUserId: string | null;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+    <div className="panel-wood rounded-xl p-3">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="font-semibold">Placar</h2>
         <span className="text-xs text-gray-400">primeiro a {MATCH_TARGET} vence</span>
@@ -35,6 +36,7 @@ export function Scoreboard({
               }`}
             >
               <span className="flex items-center gap-2">
+                <span className="text-lg">{avatarForSeat(p.seat)}</span>
                 <span className={p.eliminated_this_round ? "text-gray-400 line-through" : ""}>
                   {p.nickname}
                   {isMe && <span className="text-xs text-gray-500"> (você)</span>}

@@ -23,7 +23,7 @@ export function CardTracker({
     discardPile.filter((c) => c === v).length + myHand.filter((c) => c === v).length;
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+    <div className="panel-wood rounded-xl p-3">
       <h2 className="mb-1 text-sm font-semibold text-gray-200">Cartas restantes</h2>
       <p className="mb-2 text-xs text-gray-400">
         Cópias que ainda podem estar com os outros (descontando o descarte e a

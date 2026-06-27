@@ -13,18 +13,40 @@
 }
 
 :root {
-  --background: #0b1120;
-  --foreground: #ededed;
+  --background: #1a1210;
+  --foreground: #f3e9d8;
 }
 
 body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  /* Saloon: penumbra quente, lampião no topo, madeira escura nas bordas */
   background:
-    radial-gradient(1200px 600px at 50% -10%, #1e3a5f 0%, transparent 60%),
-    linear-gradient(180deg, #0b1120 0%, #0a0f1c 100%);
+    radial-gradient(900px 500px at 50% -5%, rgba(255, 190, 120, 0.18) 0%, transparent 55%),
+    radial-gradient(1200px 800px at 50% 30%, #3a2418 0%, #251813 55%, #160e0b 100%);
   background-attachment: fixed;
   min-height: 100vh;
+}
+
+/* Fonte de display (faroeste) */
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+/* Superfície de feltro (mesa) com borda de madeira */
+.felt {
+  background:
+    radial-gradient(120% 100% at 50% 0%, #2f7d5b 0%, #1f5a40 60%, #163f2d 100%);
+  border: 10px solid #4a2e1b;
+  box-shadow:
+    inset 0 0 60px rgba(0, 0, 0, 0.45),
+    0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Painel "madeira/pergaminho" */
+.panel-wood {
+  background: rgba(40, 26, 18, 0.55);
+  border: 1px solid rgba(220, 180, 120, 0.18);
 }
 
 /* Carta surgindo (descarte / mão) */

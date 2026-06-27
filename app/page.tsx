@@ -6,11 +6,11 @@ export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-8 px-4 py-12 sm:px-6 sm:py-16">
       <header className="text-center">
-        <h1 className="bg-gradient-to-b from-rose-200 to-rose-400 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent">
+        <h1 className="font-display text-4xl text-amber-300 drop-shadow-[0_2px_0_rgba(0,0,0,0.4)]">
           Love Letter
         </h1>
-        <p className="mt-2 text-sm text-gray-400">
-          Carta secreta, dedução e blefe — jogue com os amigos.
+        <p className="mt-2 text-sm text-amber-100/70">
+          Carta secreta, dedução e blefe — na mesa do saloon, entre amigos.
         </p>
         <div className="mt-4 flex justify-center gap-1">
           {ALL_CARD_VALUES.map((v) => (
