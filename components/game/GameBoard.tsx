@@ -324,7 +324,9 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
 
   if (view3d) {
     return (
-      <main className="fixed inset-0 overflow-hidden">
+      <main className="fixed inset-0 flex flex-col overflow-hidden">
+        {/* Área da mesa 3D (tudo acima da barra de controles) */}
+        <div className="relative min-h-0 flex-1">
         <div className="absolute inset-0">
           <Table3DView
             players={players}
@@ -423,15 +425,15 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
           </div>
         )}
 
-        {/* Modal central de fim de rodada/partida */}
+        {/* Modal central de fim de rodada/partida (sobre a mesa) */}
         {endOverlay && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
             {endOverlay}
           </div>
         )}
 
-        {/* HUD inferior: controles de jogada */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-3">
+        {/* avisos flutuantes logo acima da barra */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-2 flex flex-col items-center gap-2">
           {reveal && (
             <div className="pointer-events-auto flex items-center justify-between gap-3 rounded bg-purple-100 px-3 py-2 text-sm text-purple-800">
               <span>{reveal}</span>
@@ -443,8 +445,13 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
           {error && (
             <p className="pointer-events-auto rounded bg-red-900/80 px-3 py-1 text-sm text-red-100">{error}</p>
           )}
-          {status === "playing" && (
-            <div className="pointer-events-auto w-[min(96vw,40rem)] panel-wood rounded-xl p-3">
+        </div>
+        </div>
+
+        {/* Barra de controles — ABAIXO da mesa, sem sobrepor (nada é cortado) */}
+        {status === "playing" && (
+          <div className="shrink-0 border-t border-amber-200/15 bg-[#1a1008]/95 p-3">
+            <div className="mx-auto w-[min(96vw,40rem)]">
               {me?.eliminated_this_round ? (
                 <p className="text-center text-sm text-gray-400">
                   Você foi eliminado nesta rodada. Aguarde o fim.
@@ -456,11 +463,11 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
                   Sua vez! Clique numa carta da sua mão para jogar.
                 </p>
               ) : (
-                <div className="flex flex-col gap-2">{playControls}</div>
+                <div className="flex flex-col items-center gap-2">{playControls}</div>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </main>
     );
   }
