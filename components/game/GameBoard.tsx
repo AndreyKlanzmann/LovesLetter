@@ -18,6 +18,7 @@ import { RulesPanel } from "./RulesPanel";
 import { CardFace } from "./CardFace";
 import { CardTracker } from "./CardTracker";
 import { PlayersTable } from "./PlayersTable";
+import { Table3DView } from "./three/Table3DView";
 import { useTurnAlert } from "./useTurnAlert";
 import { useGameSounds } from "./useGameSounds";
 
@@ -35,11 +36,22 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
   const [muted, setMuted] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("ll-muted") === "1"
   );
+  const [view3d, setView3d] = useState(
+    () => typeof window === "undefined" || localStorage.getItem("ll-2d") !== "1"
+  );
 
   function toggleMute() {
     setMuted((m) => {
       const next = !m;
       if (typeof window !== "undefined") localStorage.setItem("ll-muted", next ? "1" : "0");
+      return next;
+    });
+  }
+
+  function toggleView() {
+    setView3d((v) => {
+      const next = !v;
+      if (typeof window !== "undefined") localStorage.setItem("ll-2d", next ? "0" : "1");
       return next;
     });
   }
@@ -192,6 +204,13 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={toggleView}
+            title={view3d ? "Ver em 2D" : "Ver em 3D"}
+            className="rounded border border-white/20 px-2 py-1 text-xs hover:border-white/40"
+          >
+            {view3d ? "3D" : "2D"}
+          </button>
+          <button
             onClick={toggleMute}
             title={muted ? "Ativar sons" : "Silenciar"}
             className="rounded border border-white/20 px-2 py-1 text-sm hover:border-white/40"
@@ -220,15 +239,28 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
         </div>
       )}
 
-      <PlayersTable
-        players={players}
-        currentTurnSeat={gameState.current_turn_seat}
-        protectedSeats={protectedSeats}
-        playing={status === "playing"}
-        myUserId={myUserId}
-        lastActorSeat={lastAction && lastAction.type !== "round_start" ? lastAction.seat : null}
-        deckCount={gameState.deck_count}
-      />
+      {view3d ? (
+        <Table3DView
+          players={players}
+          currentTurnSeat={gameState.current_turn_seat}
+          protectedSeats={protectedSeats}
+          playing={status === "playing"}
+          myUserId={myUserId}
+          lastActorSeat={lastAction && lastAction.type !== "round_start" ? lastAction.seat : null}
+          deckCount={gameState.deck_count}
+          discardPile={discardPile}
+        />
+      ) : (
+        <PlayersTable
+          players={players}
+          currentTurnSeat={gameState.current_turn_seat}
+          protectedSeats={protectedSeats}
+          playing={status === "playing"}
+          myUserId={myUserId}
+          lastActorSeat={lastAction && lastAction.type !== "round_start" ? lastAction.seat : null}
+          deckCount={gameState.deck_count}
+        />
+      )}
 
       <DiscardPile discardPile={discardPile} />
 
