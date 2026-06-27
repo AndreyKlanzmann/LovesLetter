@@ -6,19 +6,28 @@ import {
   type CardValue,
 } from "@/lib/games/love-letter/data/cards";
 
-// Contador AUTOMÁTICO de cartas. Como a pilha de descarte é pública (e as
-// cartas de quem é eliminado também vão para lá), dá para deduzir quantas
-// cópias de cada carta ainda podem estar em jogo: total − quantas já saíram.
-// Nada de clicar — atualiza sozinho a cada jogada. Carta com 0 fica riscada.
-export function CardTracker({ discardPile }: { discardPile: CardValue[] }) {
-  const seen = (v: CardValue) => discardPile.filter((c) => c === v).length;
+// Contador AUTOMÁTICO de cartas. Deduz quantas cópias de cada carta ainda
+// podem estar com OS OUTROS (ou no baralho/carta removida):
+//   total − cópias no descarte − cópias na SUA própria mão.
+// Tudo é calculado localmente no navegador de cada jogador, então descontar a
+// própria mão NÃO causa conflito: cada um vê a sua dedução, nada é gravado
+// nem compartilhado. Atualiza sozinho a cada jogada; carta com 0 fica riscada.
+export function CardTracker({
+  discardPile,
+  myHand,
+}: {
+  discardPile: CardValue[];
+  myHand: CardValue[];
+}) {
+  const seen = (v: CardValue) =>
+    discardPile.filter((c) => c === v).length + myHand.filter((c) => c === v).length;
 
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-3">
       <h2 className="mb-1 text-sm font-semibold text-gray-200">Cartas restantes</h2>
       <p className="mb-2 text-xs text-gray-400">
-        Quantas cópias de cada carta ainda podem estar em jogo (calculado pelo
-        descarte).
+        Cópias que ainda podem estar com os outros (descontando o descarte e a
+        sua mão).
       </p>
       <ul className="grid grid-cols-2 gap-1">
         {ALL_CARD_VALUES.map((v) => {

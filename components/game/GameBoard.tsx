@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { CARD_DEFINITIONS, type CardValue } from "@/lib/games/love-letter/data/cards";
-import { playCard, startRound } from "@/lib/games/love-letter/actions";
+import { playAgain, playCard, startRound } from "@/lib/games/love-letter/actions";
 import { useGameChannel } from "@/lib/games/love-letter/useGameChannel";
 import {
   cardRequiresGuess,
@@ -111,6 +111,19 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
     });
   }
 
+  function newMatch() {
+    setError(null);
+    setReveal(null);
+    startTransition(async () => {
+      const res = await playAgain(roomId);
+      if (!res.ok) setError(res.error);
+    });
+  }
+
+  function copyCode() {
+    navigator.clipboard?.writeText(code).catch(() => {});
+  }
+
   // Texto da última ação (jogada anterior), público.
   let actionText: string | null = null;
   if (lastAction) {
@@ -130,15 +143,24 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-4 px-6 py-10">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">
-          Sala {code}{" "}
-          <span className="text-sm font-normal text-gray-500">
-            · rodada {gameState.round_number}
-          </span>
-        </h1>
+      <header className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold">Sala {code}</h1>
+          <button
+            onClick={copyCode}
+            title="Copiar código da sala"
+            className="rounded border border-white/20 px-2 py-0.5 text-xs text-gray-300 hover:border-white/40"
+          >
+            copiar
+          </button>
+          <span className="text-sm text-gray-400">· rodada {gameState.round_number}</span>
+        </div>
         <RulesPanel />
       </header>
+
+      <p className="-mt-2 text-xs text-gray-400">
+        Baralho: {gameState.deck_count} carta{gameState.deck_count === 1 ? "" : "s"} para comprar
+      </p>
 
       <Scoreboard
         players={players}
@@ -155,7 +177,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
 
       <DiscardPile discardPile={discardPile} />
 
-      <CardTracker discardPile={discardPile} />
+      <CardTracker discardPile={discardPile} myHand={myHand} />
 
       {/* Resultado privado do Padre — só este jogador vê. */}
       {reveal && (
@@ -169,7 +191,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
 
       {/* Fim de rodada / partida */}
       {status === "round_over" && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-gray-900">
           <p className="font-semibold">
             Fim da rodada — {lastAction?.winnerSeat != null ? nameForSeat(lastAction.winnerSeat) : "?"} venceu!
           </p>
@@ -183,13 +205,22 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
         </div>
       )}
       {status === "game_over" && (
-        <div className="rounded-lg border border-green-300 bg-green-50 p-4">
-          <p className="font-semibold">
+        <div className="rounded-lg border border-green-300 bg-green-50 p-4 text-gray-900">
+          <p className="text-lg font-bold">
             🏆 {lastAction?.winnerSeat != null ? nameForSeat(lastAction.winnerSeat) : "?"} venceu a partida!
           </p>
-          <Link href="/" className="mt-2 inline-block text-sm text-blue-600 hover:underline">
-            Voltar ao início
-          </Link>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              onClick={newMatch}
+              disabled={pending}
+              className="rounded-lg bg-black px-4 py-2 font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
+            >
+              {pending ? "Reiniciando..." : "Jogar novamente"}
+            </button>
+            <Link href="/" className="text-sm text-blue-700 hover:underline">
+              Voltar ao início
+            </Link>
+          </div>
         </div>
       )}
 

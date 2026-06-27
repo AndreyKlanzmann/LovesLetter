@@ -93,6 +93,61 @@ export async function startRound(roomId: string): Promise<{ ok: true } | ActionE
   }
 }
 
+// "Jogar novamente": zera o placar e recomeça uma partida do zero, depois que
+// uma terminou (game_over). Tem guarda contra corrida: se a partida já não
+// estiver em game_over (porque outro jogador clicou primeiro), apenas retorna
+// ok sem redistribuir — evita duas distribuições conflitantes.
+export async function playAgain(roomId: string): Promise<{ ok: true } | ActionError> {
+  try {
+    const userId = await requireUserId();
+    const svc = createServiceRoleClient();
+
+    const { data: members } = await svc
+      .from("room_players")
+      .select("*")
+      .eq("room_id", roomId)
+      .order("seat");
+    if (!members || members.length < 2) {
+      return { ok: false, error: "São necessários ao menos 2 jogadores." };
+    }
+    if (!members.some((m) => m.user_id === userId)) {
+      return { ok: false, error: "Você não está nesta sala." };
+    }
+
+    const { data: gs } = await svc
+      .from("game_states")
+      .select("round_status")
+      .eq("room_id", roomId)
+      .maybeSingle();
+    if (gs && gs.round_status !== "game_over") {
+      // Já reiniciada por outro jogador (ou ainda em jogo) — não redistribui.
+      return { ok: true };
+    }
+
+    // Zera placar e eliminações de todos.
+    await svc
+      .from("room_players")
+      .update({ rounds_won: 0, eliminated_this_round: false })
+      .eq("room_id", roomId);
+
+    const seats = members.map((m) => ({ seat: m.seat, userId: m.user_id }));
+    const round = dealRound(seats, 1);
+    round.currentTurnSeat = seats[0].seat;
+    startTurn(round);
+
+    await svc.from("rooms").update({ status: "playing" }).eq("id", roomId);
+    await saveRound(svc, roomId, round, "playing", {
+      type: "round_start",
+      roundNumber: 1,
+      firstSeat: seats[0].seat,
+    });
+
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "erro ao reiniciar" };
+  }
+}
+
 export async function playCard(
   roomId: string,
   move: { playedCard: CardValue; targetSeat?: number; guessedValue?: CardValue }
