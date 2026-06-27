@@ -1,5 +1,6 @@
 import { CreateRoomForm } from "@/components/lobby/CreateRoomForm";
 import { JoinRoomForm } from "@/components/lobby/JoinRoomForm";
+import { InstallButton } from "@/components/InstallButton";
 import { ALL_CARD_VALUES, CARD_DEFINITIONS } from "@/lib/games/love-letter/data/cards";
 
 export default function Home() {
@@ -30,6 +31,8 @@ export default function Home() {
         <span className="h-px flex-1 bg-white/10" /> ou <span className="h-px flex-1 bg-white/10" />
       </div>
       <JoinRoomForm />
+
+      <InstallButton />
     </main>
   );
 }
