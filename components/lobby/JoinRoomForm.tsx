@@ -26,10 +26,13 @@ export function JoinRoomForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-lg border p-4">
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+    >
       <h2 className="font-semibold">Entrar em uma sala</h2>
       <input
-        className="rounded border px-3 py-2"
+        className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 outline-none placeholder:text-gray-500 focus:border-amber-400/60"
         placeholder="Seu nome"
         value={nickname}
         onChange={(e) => setNickname(e.target.value)}
@@ -37,7 +40,7 @@ export function JoinRoomForm() {
         required
       />
       <input
-        className="rounded border px-3 py-2 uppercase tracking-widest"
+        className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 uppercase tracking-[0.3em] outline-none placeholder:tracking-normal placeholder:text-gray-500 focus:border-amber-400/60"
         placeholder="Código da sala"
         value={code}
         onChange={(e) => setCode(e.target.value)}
@@ -47,11 +50,11 @@ export function JoinRoomForm() {
       <button
         type="submit"
         disabled={loading}
-        className="rounded bg-black px-3 py-2 text-white disabled:opacity-50"
+        className="rounded-lg border border-white/20 px-3 py-2 font-semibold hover:bg-white/10 disabled:opacity-50"
       >
         {loading ? "Entrando..." : "Entrar"}
       </button>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-400">{error}</p>}
     </form>
   );
 }

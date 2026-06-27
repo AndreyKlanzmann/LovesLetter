@@ -69,12 +69,18 @@ export async function startRound(roomId: string): Promise<{ ok: true } | ActionE
     const seats = members.map((m) => ({ seat: m.seat, userId: m.user_id }));
     const roundNumber = gs ? gs.round_number + 1 : 1;
 
-    // Pela regra, o vencedor da rodada anterior começa a próxima.
-    const prevWinner = (gs?.last_action as { winnerSeat?: number } | null)?.winnerSeat;
-    const firstSeat =
-      prevWinner != null && seats.some((s) => s.seat === prevWinner)
-        ? prevWinner
-        : seats[0].seat;
+    // 1ª rodada da partida: quem começa é SORTEADO. Nas seguintes, pela regra,
+    // começa o vencedor da rodada anterior.
+    let firstSeat: number;
+    if (roundNumber === 1) {
+      firstSeat = seats[Math.floor(Math.random() * seats.length)].seat;
+    } else {
+      const prevWinner = (gs?.last_action as { winnerSeat?: number } | null)?.winnerSeat;
+      firstSeat =
+        prevWinner != null && seats.some((s) => s.seat === prevWinner)
+          ? prevWinner
+          : seats[0].seat;
+    }
 
     const round = dealRound(seats, roundNumber);
     round.currentTurnSeat = firstSeat;
@@ -131,15 +137,17 @@ export async function playAgain(roomId: string): Promise<{ ok: true } | ActionEr
       .eq("room_id", roomId);
 
     const seats = members.map((m) => ({ seat: m.seat, userId: m.user_id }));
+    // Partida nova: 1ª rodada também sorteia quem começa.
+    const firstSeat = seats[Math.floor(Math.random() * seats.length)].seat;
     const round = dealRound(seats, 1);
-    round.currentTurnSeat = seats[0].seat;
+    round.currentTurnSeat = firstSeat;
     startTurn(round);
 
     await svc.from("rooms").update({ status: "playing" }).eq("id", roomId);
     await saveRound(svc, roomId, round, "playing", {
       type: "round_start",
       roundNumber: 1,
-      firstSeat: seats[0].seat,
+      firstSeat,
     });
 
     return { ok: true };

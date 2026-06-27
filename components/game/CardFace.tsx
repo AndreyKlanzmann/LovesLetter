@@ -29,12 +29,13 @@ export function CardFace({
     return (
       <div
         title={`${def.name} — ${def.description}`}
-        className={`flex h-20 w-14 flex-col items-center justify-between rounded-md border ${c.ring} bg-gradient-to-b ${c.tint} to-white p-1 text-gray-800 shadow-sm`}
+        className={`anim-pop flex h-20 w-14 flex-col items-center justify-between rounded-md border ${c.ring} bg-gradient-to-b ${c.tint} to-white p-1 text-gray-800 shadow-sm`}
       >
-        <span className={`flex h-6 w-6 items-center justify-center rounded-full ${c.badge} text-xs font-bold text-white`}>
+        <span className={`flex h-5 w-5 items-center justify-center rounded-full ${c.badge} text-[10px] font-bold text-white`}>
           {value}
         </span>
-        <span className="pb-1 text-center text-[10px] font-semibold leading-tight">
+        <span className="text-lg leading-none">{def.icon}</span>
+        <span className="pb-0.5 text-center text-[10px] font-semibold leading-tight">
           {def.name}
         </span>
       </div>
@@ -43,12 +44,13 @@ export function CardFace({
 
   return (
     <div
-      className={`flex h-44 w-32 flex-col rounded-xl border-2 ${c.ring} bg-gradient-to-b ${c.tint} to-white p-2 text-gray-800 shadow-md`}
+      className={`flex h-44 w-28 flex-col rounded-xl border-2 ${c.ring} bg-gradient-to-b ${c.tint} to-white p-2 text-gray-800 shadow-md sm:w-32`}
     >
       <div className="flex items-center justify-between">
         <span className={`flex h-8 w-8 items-center justify-center rounded-full ${c.badge} font-bold text-white`}>
           {value}
         </span>
+        <span className="text-2xl leading-none">{def.icon}</span>
       </div>
       <p className="mt-1 text-center text-sm font-bold">{def.name}</p>
       {showDescription && (

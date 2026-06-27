@@ -11,6 +11,7 @@ export interface CardDefinition {
   count: number; // quantas cópias existem no baralho de 16 cartas
   description: string;
   art: string; // caminho do asset em /public
+  icon: string; // emoji/ícone temático (visual; um reskin troca aqui)
 }
 
 export const CARD_DEFINITIONS: Record<CardValue, CardDefinition> = {
@@ -21,6 +22,7 @@ export const CARD_DEFINITIONS: Record<CardValue, CardDefinition> = {
     description:
       "Escolha um jogador e diga um valor de carta (exceto Guarda). Se ele tiver essa carta, é eliminado.",
     art: "/cards/guard.png",
+    icon: "🔍",
   },
   2: {
     value: 2,
@@ -28,6 +30,7 @@ export const CARD_DEFINITIONS: Record<CardValue, CardDefinition> = {
     count: 2,
     description: "Olhe a mão de outro jogador.",
     art: "/cards/priest.png",
+    icon: "👁️",
   },
   3: {
     value: 3,
@@ -36,6 +39,7 @@ export const CARD_DEFINITIONS: Record<CardValue, CardDefinition> = {
     description:
       "Compare sua mão com a de outro jogador em segredo. Quem tiver o menor valor é eliminado.",
     art: "/cards/baron.png",
+    icon: "⚔️",
   },
   4: {
     value: 4,
@@ -43,6 +47,7 @@ export const CARD_DEFINITIONS: Record<CardValue, CardDefinition> = {
     count: 2,
     description: "Você fica protegido contra efeitos até o início do seu próximo turno.",
     art: "/cards/handmaid.png",
+    icon: "🛡️",
   },
   5: {
     value: 5,
@@ -51,6 +56,7 @@ export const CARD_DEFINITIONS: Record<CardValue, CardDefinition> = {
     description:
       "Escolha um jogador (pode ser você mesmo) para descartar a mão e comprar uma nova carta.",
     art: "/cards/prince.png",
+    icon: "🤴",
   },
   6: {
     value: 6,
@@ -58,6 +64,7 @@ export const CARD_DEFINITIONS: Record<CardValue, CardDefinition> = {
     count: 1,
     description: "Troque sua mão com a de outro jogador.",
     art: "/cards/king.png",
+    icon: "👑",
   },
   7: {
     value: 7,
@@ -66,6 +73,7 @@ export const CARD_DEFINITIONS: Record<CardValue, CardDefinition> = {
     description:
       "Sem efeito ao jogar. Deve ser descartada obrigatoriamente se você tiver o Rei ou o Príncipe na mão.",
     art: "/cards/countess.png",
+    icon: "🌹",
   },
   8: {
     value: 8,
@@ -73,6 +81,7 @@ export const CARD_DEFINITIONS: Record<CardValue, CardDefinition> = {
     count: 1,
     description: "Se você descartar esta carta por qualquer motivo, está eliminado na hora.",
     art: "/cards/princess.png",
+    icon: "💌",
   },
 };
 

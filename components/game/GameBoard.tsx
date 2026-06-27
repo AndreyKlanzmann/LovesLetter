@@ -17,6 +17,7 @@ import { DiscardPile } from "./DiscardPile";
 import { RulesPanel } from "./RulesPanel";
 import { CardFace } from "./CardFace";
 import { CardTracker } from "./CardTracker";
+import { useTurnAlert } from "./useTurnAlert";
 
 const GUESS_VALUES: CardValue[] = [2, 3, 4, 5, 6, 7, 8]; // Guarda não pode chutar 1
 
@@ -29,6 +30,17 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
   const [error, setError] = useState<string | null>(null);
   const [reveal, setReveal] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // Alerta de "sua vez" (som + título). Calculado aqui, antes de qualquer
+  // return condicional, para respeitar as regras de hooks.
+  const meEarly = players.find((p) => p.user_id === myUserId);
+  const isMyTurnAlert =
+    !!gameState &&
+    gameState.round_status === "playing" &&
+    !!meEarly &&
+    gameState.current_turn_seat === meEarly.seat &&
+    !meEarly.eliminated_this_round;
+  useTurnAlert(isMyTurnAlert);
 
   if (loading || !gameState) {
     return <main className="mx-auto max-w-2xl px-6 py-16">Carregando partida...</main>;
@@ -146,7 +158,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
       : [];
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-4 px-6 py-10">
+    <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6 sm:px-6 sm:py-10">
       <header className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-bold">Sala {code}</h1>
@@ -235,8 +247,14 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
 
       {/* Mão do jogador + controles de jogada */}
       {status === "playing" && (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-          <h2 className="mb-2 font-semibold">Sua mão</h2>
+        <div
+          className={`rounded-xl border border-white/10 bg-white/5 p-4 ${
+            isMyTurn ? "anim-turn" : ""
+          }`}
+        >
+          <h2 className="mb-2 font-semibold">
+            Sua mão {isMyTurn && <span className="text-amber-400">· sua vez!</span>}
+          </h2>
           {me?.eliminated_this_round ? (
             <p className="text-sm text-gray-500">
               Você foi eliminado nesta rodada. Aguarde o fim para a próxima.
