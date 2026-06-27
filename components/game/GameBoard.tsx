@@ -102,6 +102,15 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
     setSelectedGuess(null);
   }
 
+  // Selecionar uma carta (usado tanto pelos botões 2D quanto pelo clique 3D).
+  function selectCard(c: CardValue) {
+    if (!isMyTurn || !playable.includes(c)) return;
+    setError(null);
+    setSelectedCard(c);
+    setSelectedTarget(null);
+    setSelectedGuess(null);
+  }
+
   function publicPlayers() {
     return players.map((p) => ({ seat: p.seat, eliminated: p.eliminated_this_round }));
   }
@@ -250,6 +259,10 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
           deckCount={gameState.deck_count}
           discardPile={discardPile}
           myHand={myHand}
+          isMyTurn={isMyTurn}
+          playable={playable}
+          selectedCard={selectedCard}
+          onSelectCard={selectCard}
         />
       ) : (
         <PlayersTable
@@ -351,12 +364,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
                   <button
                     key={`${c}-${i}`}
                     disabled={!canPlay || pending}
-                    onClick={() => {
-                      setError(null);
-                      setSelectedCard(c);
-                      setSelectedTarget(null);
-                      setSelectedGuess(null);
-                    }}
+                    onClick={() => selectCard(c)}
                     className={`rounded-xl transition ${
                       selected ? "ring-4 ring-amber-400" : ""
                     } ${canPlay ? "hover:-translate-y-1 hover:shadow-lg" : "cursor-not-allowed opacity-50"}`}

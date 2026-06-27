@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Html, OrbitControls, ContactShadows } from "@react-three/drei";
+import { Html, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 import type { Database } from "@/lib/supabase/types";
 import { CARD_DEFINITIONS, type CardValue } from "@/lib/games/love-letter/data/cards";
@@ -23,6 +23,10 @@ export interface Table3DProps {
   deckCount: number;
   discardPile: CardValue[];
   myHand: CardValue[];
+  isMyTurn: boolean;
+  playable: CardValue[];
+  selectedCard: CardValue | null;
+  onSelectCard: (v: CardValue) => void;
 }
 
 // ---- Texturas procedurais (geradas em canvas, sem arquivos) ---------------
@@ -70,7 +74,7 @@ function makeFeltTexture(): THREE.Texture {
 function CardLabel({ value }: { value: CardValue }) {
   const def = CARD_DEFINITIONS[value];
   return (
-    <Html position={[0, 0, 0.03]} center distanceFactor={6} zIndexRange={[5, 0]} occlude={false}>
+    <Html position={[0, 0, 0.03]} center distanceFactor={6} zIndexRange={[5, 0]}>
       <div style={{ pointerEvents: "none" }} className="flex select-none flex-col items-center text-gray-900">
         <span className="text-xl leading-none">{def.icon}</span>
         <span className="text-[11px] font-bold leading-tight">
@@ -85,18 +89,58 @@ function FaceCard({
   value,
   position,
   rotation,
+  clickable = false,
+  selected = false,
+  onClick,
 }: {
   value: CardValue;
   position?: [number, number, number];
   rotation?: [number, number, number];
+  clickable?: boolean;
+  selected?: boolean;
+  onClick?: () => void;
 }) {
+  const [hover, setHover] = useState(false);
   return (
     <group position={position} rotation={rotation}>
-      <mesh castShadow>
-        <boxGeometry args={[0.52, 0.74, 0.02]} />
-        <meshStandardMaterial color="#f8f5ec" roughness={0.6} />
-      </mesh>
-      <CardLabel value={value} />
+      <group position={[0, selected ? 0.16 : 0, 0]}>
+        <mesh
+          castShadow
+          onClick={
+            clickable && onClick
+              ? (e) => {
+                  e.stopPropagation();
+                  onClick();
+                }
+              : undefined
+          }
+          onPointerOver={
+            clickable
+              ? () => {
+                  setHover(true);
+                  document.body.style.cursor = "pointer";
+                }
+              : undefined
+          }
+          onPointerOut={
+            clickable
+              ? () => {
+                  setHover(false);
+                  document.body.style.cursor = "auto";
+                }
+              : undefined
+          }
+        >
+          <boxGeometry args={[0.52, 0.74, 0.02]} />
+          <meshStandardMaterial
+            color={selected ? "#fff4c2" : "#f8f5ec"}
+            emissive={selected || hover ? "#f59e0b" : "#000000"}
+            emissiveIntensity={selected ? 0.55 : hover ? 0.3 : 0}
+            roughness={0.6}
+          />
+        </mesh>
+        <CardLabel value={value} />
+      </group>
     </group>
   );
 }
@@ -132,7 +176,29 @@ function TurnRing({ position }: { position: [number, number, number] }) {
   );
 }
 
-// Carta voando do assento de quem jogou até o descarte (arco + giro).
+// Lampião balançando: ponto de luz quente + esfera emissiva que oscila.
+function SwingingLamp() {
+  const light = useRef<THREE.PointLight>(null);
+  const ball = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    const x = Math.sin(clock.elapsedTime * 0.7) * 0.5;
+    const z = Math.cos(clock.elapsedTime * 0.5) * 0.3;
+    if (light.current) light.current.position.set(x, 3.8, z);
+    if (ball.current) ball.current.position.set(x, 3.8, z);
+  });
+  return (
+    <group>
+      <pointLight ref={light} position={[0, 3.8, 0]} intensity={55} color="#ffce8a" distance={14} decay={1.4} />
+      <mesh ref={ball} position={[0, 3.8, 0]}>
+        <sphereGeometry args={[0.13, 16, 16]} />
+        <meshStandardMaterial color="#ffce8a" emissive="#ffce8a" emissiveIntensity={2.5} />
+      </mesh>
+    </group>
+  );
+}
+
+// Carta voando do assento até o descarte: começa de COSTAS (verso vermelho) e
+// vira para a FACE no meio do voo, num arco.
 function FlyingCard({
   from,
   value,
@@ -145,9 +211,10 @@ function FlyingCard({
   const ref = useRef<THREE.Group>(null);
   const start = useRef<number | null>(null);
   const done = useRef(false);
+  const [flipped, setFlipped] = useState(false);
   useFrame(({ clock }) => {
     if (start.current === null) start.current = clock.elapsedTime;
-    const t = Math.min(1, (clock.elapsedTime - start.current) / 0.6);
+    const t = Math.min(1, (clock.elapsedTime - start.current) / 0.65);
     const e = 1 - Math.pow(1 - t, 3);
     if (ref.current) {
       ref.current.position.set(
@@ -155,8 +222,10 @@ function FlyingCard({
         from[1] + (DISCARD_POS[1] - from[1]) * e + Math.sin(e * Math.PI) * 0.9,
         from[2] + (DISCARD_POS[2] - from[2]) * e
       );
-      ref.current.rotation.set(-Math.PI / 2 + ((Math.PI / 2) * (1 - e)), e * Math.PI * 2, 0);
+      // 1 volta e meia: termina deitada (face para cima) no descarte
+      ref.current.rotation.set(-Math.PI / 2 + (Math.PI / 2) * (1 - e), e * Math.PI * 3, 0);
     }
+    if (t > 0.5 && !flipped) setFlipped(true);
     if (t >= 1 && !done.current) {
       done.current = true;
       onDone();
@@ -164,22 +233,35 @@ function FlyingCard({
   });
   return (
     <group ref={ref}>
-      <FaceCard value={value} />
+      {flipped ? (
+        <FaceCard value={value} />
+      ) : (
+        <mesh castShadow>
+          <boxGeometry args={[0.52, 0.74, 0.02]} />
+          <meshStandardMaterial color="#7f1d1d" roughness={0.7} />
+        </mesh>
+      )}
     </group>
   );
 }
 
-function Scene({
-  players,
-  currentTurnSeat,
-  protectedSeats,
-  playing,
-  myUserId,
-  lastActorSeat,
-  deckCount,
-  discardPile,
-  myHand,
-}: Table3DProps) {
+function Scene(props: Table3DProps) {
+  const {
+    players,
+    currentTurnSeat,
+    protectedSeats,
+    playing,
+    myUserId,
+    lastActorSeat,
+    deckCount,
+    discardPile,
+    myHand,
+    isMyTurn,
+    playable,
+    selectedCard,
+    onSelectCard,
+  } = props;
+
   const wood = useMemo(() => makeWoodTexture(), []);
   const woodSide = useMemo(() => {
     const t = makeWoodTexture();
@@ -196,14 +278,12 @@ function Scene({
   const n = players.length;
   const top = discardPile[discardPile.length - 1];
 
-  // Posição de cada jogador na mesa ("eu" na frente, +z, perto da câmera).
   const layout = players.map((p, idx) => {
     const k = (idx - myIndex + n) % n;
     const theta = Math.PI / 2 + (k * 2 * Math.PI) / n;
     return { p, x: SEAT_RADIUS * Math.cos(theta), z: SEAT_RADIUS * Math.sin(theta) };
   });
 
-  // Carta voando: dispara quando o descarte cresce.
   const [fly, setFly] = useState<{ id: number; from: [number, number, number]; value: CardValue } | null>(null);
   const prevLen = useRef(discardPile.length);
   const flyId = useRef(0);
@@ -211,9 +291,7 @@ function Scene({
     if (discardPile.length > prevLen.current && lastActorSeat != null) {
       const seat = layout.find((l) => l.p.seat === lastActorSeat);
       const value = discardPile[discardPile.length - 1];
-      if (seat) {
-        setFly({ id: ++flyId.current, from: [seat.x, 0.5, seat.z], value });
-      }
+      if (seat) setFly({ id: ++flyId.current, from: [seat.x, 0.5, seat.z], value });
     }
     prevLen.current = discardPile.length;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -221,17 +299,17 @@ function Scene({
 
   return (
     <>
-      <ambientLight intensity={0.55} color="#ffd9a8" />
+      <ambientLight intensity={0.5} color="#ffd9a8" />
       <spotLight
         position={[0, 6, 2.5]}
         angle={0.7}
         penumbra={0.6}
-        intensity={120}
+        intensity={70}
         color="#ffdca8"
         castShadow
         shadow-mapSize={[1024, 1024]}
       />
-      <pointLight position={[-3, 3, -2]} intensity={20} color="#ffba7a" />
+      <SwingingLamp />
 
       {/* Mesa: madeira (lado/base) + feltro (topo) */}
       <mesh position={[0, -0.22, 0]} receiveShadow castShadow>
@@ -261,22 +339,21 @@ function Scene({
           </div>
         </Html>
       </group>
-      {top !== undefined && (
-        <FaceCard value={top} position={DISCARD_POS} rotation={[-Math.PI / 2, 0, 0]} />
-      )}
+      {top !== undefined && <FaceCard value={top} position={DISCARD_POS} rotation={[-Math.PI / 2, 0, 0]} />}
       {fly && <FlyingCard key={fly.id} from={fly.from} value={fly.value} onDone={() => setFly(null)} />}
 
-      {/* Jogadores ao redor (avatar + cartas viradas). "Eu" não mostro o leque
-          virado aqui — minha mão aparece face para cima em primeira pessoa. */}
+      {/* Adversários ao redor (avatar + cartas viradas). Não desenho a mim
+          mesmo — minha mão aparece em primeira pessoa logo abaixo. */}
       {layout.map(({ p, x, z }) => {
         const isMe = p.user_id === myUserId;
+        if (isMe) return null;
         const isTurn = p.seat === currentTurnSeat && playing;
         const faceAngle = Math.atan2(x, z);
         return (
           <group key={p.id}>
             {isTurn && <TurnRing position={[x, -0.01, z]} />}
             <group position={[x, 0, z]} rotation={[0, faceAngle, 0]}>
-              {!isMe && <CardBackFan count={p.eliminated_this_round ? 0 : isTurn ? 2 : 1} />}
+              <CardBackFan count={p.eliminated_this_round ? 0 : isTurn ? 2 : 1} />
               <Html position={[0, 1.05, 0]} center distanceFactor={9} zIndexRange={[10, 0]}>
                 <div
                   style={{ pointerEvents: "none" }}
@@ -297,7 +374,6 @@ function Scene({
                     }`}
                   >
                     {p.nickname}
-                    {isMe ? " (você)" : ""}
                   </span>
                   {protectedSeats.includes(p.seat) && (
                     <span className="rounded bg-blue-500/50 px-1 text-[9px] text-blue-50">Aia</span>
@@ -309,31 +385,26 @@ function Scene({
         );
       })}
 
-      {/* Minha mão em leque, face para cima, em primeira pessoa (perto da câmera). */}
-      <group position={[0, 0.15, 2.55]} rotation={[-0.55, 0, 0]}>
+      {/* Minha mão em leque (face para cima), clicável quando é minha vez. */}
+      <group position={[0, 0.18, 2.5]} rotation={[-0.6, 0, 0]}>
         {myHand.map((v, i) => {
           const off = i - (myHand.length - 1) / 2;
+          const canPlay = isMyTurn && playable.includes(v);
           return (
             <FaceCard
               key={`${v}-${i}`}
               value={v}
-              position={[off * 0.58, 0, -Math.abs(off) * 0.05]}
+              position={[off * 0.62, 0, -Math.abs(off) * 0.05]}
               rotation={[0, 0, -off * 0.12]}
+              clickable={canPlay}
+              selected={selectedCard === v}
+              onClick={() => onSelectCard(v)}
             />
           );
         })}
       </group>
 
       <ContactShadows position={[0, -0.04, 0]} opacity={0.5} scale={8} blur={2.5} far={4} />
-
-      <OrbitControls
-        enablePan={false}
-        minPolarAngle={0.55}
-        maxPolarAngle={1.3}
-        minDistance={3.4}
-        maxDistance={6.5}
-        target={[0, 0.1, 0]}
-      />
     </>
   );
 }
@@ -341,9 +412,14 @@ function Scene({
 export default function Table3D(props: Table3DProps) {
   return (
     <div className="h-[340px] w-full overflow-hidden rounded-2xl border-8 border-[#3a2414] sm:h-[440px]">
-      <Canvas shadows camera={{ position: [0, 1.7, 3.9], fov: 55 }} dpr={[1, 2]}>
+      <Canvas
+        shadows
+        camera={{ position: [0, 2.7, 3.9], fov: 50 }}
+        dpr={[1, 2]}
+        onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
+      >
         <color attach="background" args={["#160e0b"]} />
-        <fog attach="fog" args={["#160e0b", 7, 13]} />
+        <fog attach="fog" args={["#160e0b", 8, 14]} />
         <Scene {...props} />
       </Canvas>
     </div>
