@@ -155,7 +155,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
 
       <DiscardPile discardPile={discardPile} />
 
-      <CardTracker roomId={roomId} round={gameState.round_number} />
+      <CardTracker discardPile={discardPile} />
 
       {/* Resultado privado do Padre — só este jogador vê. */}
       {reveal && (

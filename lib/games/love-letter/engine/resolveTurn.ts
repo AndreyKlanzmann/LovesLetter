@@ -45,6 +45,17 @@ export function resolvePlay(round: RoundState, input: PlayInput): ResolvePlayRes
           guessedValue: input.guessedValue,
         });
 
+  // Regra: ao ser eliminado, o jogador revela e descarta a carta que ainda
+  // tem na mão (fica pública). Centralizado aqui para que QUALQUER caminho de
+  // eliminação (Guarda, Barão, Princesa...) deixe a carta visível no descarte
+  // — o que também alimenta o contador automático de cartas.
+  for (const p of round.players) {
+    if (p.eliminated && p.hand.length > 0) {
+      round.discardPile.push(...p.hand);
+      p.hand = [];
+    }
+  }
+
   const { ended, winnerSeat } = checkRoundEnd(round);
   if (ended) {
     round.status = "round_over";
