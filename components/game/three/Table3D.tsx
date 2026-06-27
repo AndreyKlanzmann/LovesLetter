@@ -106,19 +106,41 @@ function makeCardTexture(value: CardValue): THREE.Texture {
   ctx.font = "bold 30px Georgia, serif";
   ctx.fillText(def.name.toUpperCase(), W / 2, 70);
 
-  // ilustração (emoji grande como marcador — troque por arte real se tiver)
+  // área da ilustração
+  const ax = 34;
+  const ay = 86;
+  const aw = W - 68;
+  const ah = H * 0.4;
+
+  // ilustração padrão (emoji grande como marcador)
   ctx.font = "120px serif";
   ctx.textBaseline = "middle";
-  ctx.fillText(def.icon, W / 2, H * 0.42);
+  ctx.fillText(def.icon, W / 2, ay + ah / 2);
 
   // texto do efeito
   ctx.fillStyle = "#4a3a22";
   ctx.textBaseline = "alphabetic";
   ctx.font = "15px Georgia, serif";
-  wrap(ctx, def.description, W / 2, H * 0.62, W - 70, 19);
+  wrap(ctx, def.description, W / 2, H * 0.64, W - 70, 19);
 
   const t = new THREE.CanvasTexture(c);
   t.anisotropy = 4;
+
+  // Se existir uma arte real em /public (def.art), usa-a no lugar do emoji.
+  // Não existindo (404), mantém o emoji — fallback silencioso.
+  const img = new Image();
+  img.onload = () => {
+    ctx.fillStyle = "#f1e3bf";
+    ctx.fillRect(ax, ay, aw, ah);
+    const ratio = Math.min(aw / img.width, ah / img.height);
+    const dw = img.width * ratio;
+    const dh = img.height * ratio;
+    ctx.drawImage(img, W / 2 - dw / 2, ay + ah / 2 - dh / 2, dw, dh);
+    t.needsUpdate = true;
+  };
+  img.onerror = () => {};
+  img.src = def.art;
+
   return t;
 }
 
