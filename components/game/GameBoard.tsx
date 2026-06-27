@@ -39,6 +39,7 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
   const [view3d, setView3d] = useState(
     () => typeof window === "undefined" || localStorage.getItem("ll-2d") !== "1"
   );
+  const [openPanel, setOpenPanel] = useState<null | "score" | "tracker" | "discard">(null);
 
   function toggleMute() {
     setMuted((m) => {
@@ -197,6 +198,273 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
       ? targetableSeats(selectedCard, mySeat, publicPlayers(), protectedSeats)
       : [];
 
+  const turnName =
+    gameState.current_turn_seat != null ? nameForSeat(gameState.current_turn_seat) : "...";
+
+  // Controles de jogada (alvo / palpite / confirmar) — reusados no HUD 3D.
+  const playControls = (
+    <>
+      {cardRequiresTarget(selectedCard ?? 1) && targetsForSelected.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs font-medium text-gray-300">Alvo:</p>
+          <div className="flex flex-wrap gap-2">
+            {targetsForSelected.map((seat) => (
+              <button
+                key={seat}
+                onClick={() => setSelectedTarget(seat)}
+                className={`rounded-lg border px-3 py-1 text-sm ${
+                  selectedTarget === seat
+                    ? "border-amber-400 bg-amber-400 font-semibold text-black"
+                    : "border-white/20 hover:border-white/40"
+                }`}
+              >
+                {nameForSeat(seat)}
+                {seat === mySeat && " (você)"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {selectedCard !== null && cardRequiresTarget(selectedCard) && targetsForSelected.length === 0 && (
+        <p className="text-xs text-gray-400">
+          Todos os outros estão protegidos — esta carta será jogada sem efeito.
+        </p>
+      )}
+      {selectedCard !== null && cardRequiresGuess(selectedCard) && targetsForSelected.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs font-medium text-gray-300">Palpite:</p>
+          <div className="flex flex-wrap gap-2">
+            {GUESS_VALUES.map((g) => (
+              <button
+                key={g}
+                onClick={() => setSelectedGuess(g)}
+                className={`rounded-lg border px-2 py-1 text-sm ${
+                  selectedGuess === g
+                    ? "border-amber-400 bg-amber-400 font-semibold text-black"
+                    : "border-white/20 hover:border-white/40"
+                }`}
+                title={CARD_DEFINITIONS[g].name}
+              >
+                {g} · {CARD_DEFINITIONS[g].name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {selectedCard !== null && (
+        <div className="flex gap-2">
+          <button
+            onClick={confirmPlay}
+            disabled={pending}
+            className="rounded-lg bg-amber-500 px-4 py-2 font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
+          >
+            {pending ? "Jogando..." : `Jogar ${CARD_DEFINITIONS[selectedCard].name}`}
+          </button>
+          <button
+            onClick={resetSelection}
+            disabled={pending}
+            className="rounded-lg border border-white/20 px-4 py-2 hover:border-white/40"
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
+    </>
+  );
+
+  const endOverlay =
+    status === "round_over" ? (
+      <div className="pointer-events-auto w-[min(92vw,28rem)] rounded-xl border border-amber-300 bg-amber-50 p-4 text-gray-900 shadow-2xl">
+        <p className="font-semibold">
+          Fim da rodada — {lastAction?.winnerSeat != null ? nameForSeat(lastAction.winnerSeat) : "?"} venceu!
+        </p>
+        {lastAction?.reveal && lastAction.reveal.length > 0 && (
+          <div className="mt-3">
+            <p className="mb-1 text-xs font-medium text-gray-600">Mãos reveladas:</p>
+            <div className="flex flex-wrap gap-2">
+              {lastAction.reveal.map((r) => (
+                <div
+                  key={r.seat}
+                  className={`flex items-center gap-2 ${r.seat === lastAction.winnerSeat ? "" : "opacity-70"}`}
+                >
+                  <span className="text-xs">{nameForSeat(r.seat)}</span>
+                  <CardFace value={r.card} size="sm" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <button
+          onClick={nextRound}
+          disabled={pending}
+          className="mt-3 rounded bg-black px-3 py-2 text-white disabled:opacity-50"
+        >
+          Próxima rodada
+        </button>
+      </div>
+    ) : status === "game_over" ? (
+      <div className="pointer-events-auto w-[min(92vw,28rem)] rounded-xl border border-green-300 bg-green-50 p-4 text-gray-900 shadow-2xl">
+        <p className="text-lg font-bold">
+          🏆 {lastAction?.winnerSeat != null ? nameForSeat(lastAction.winnerSeat) : "?"} venceu a partida!
+        </p>
+        <div className="mt-3 flex items-center gap-3">
+          <button
+            onClick={newMatch}
+            disabled={pending}
+            className="rounded-lg bg-black px-4 py-2 font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
+          >
+            {pending ? "Reiniciando..." : "Jogar novamente"}
+          </button>
+          <Link href="/" className="text-sm text-blue-700 hover:underline">
+            Voltar ao início
+          </Link>
+        </div>
+      </div>
+    ) : null;
+
+  if (view3d) {
+    return (
+      <main className="fixed inset-0 overflow-hidden">
+        <div className="absolute inset-0">
+          <Table3DView
+            players={players}
+            currentTurnSeat={gameState.current_turn_seat}
+            protectedSeats={protectedSeats}
+            playing={status === "playing"}
+            myUserId={myUserId}
+            lastActorSeat={lastAction && lastAction.type !== "round_start" ? lastAction.seat : null}
+            deckCount={gameState.deck_count}
+            discardPile={discardPile}
+            myHand={myHand}
+            isMyTurn={isMyTurn}
+            playable={playable}
+            selectedCard={selectedCard}
+            onSelectCard={selectCard}
+          />
+        </div>
+
+        {/* HUD topo */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
+          <div className="pointer-events-auto flex max-w-[55%] flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-display text-lg text-amber-200">Sala {code}</h1>
+              <button
+                onClick={copyCode}
+                className="rounded border border-white/20 px-2 py-0.5 text-xs text-gray-300 hover:border-white/40"
+              >
+                copiar
+              </button>
+              <span className="text-xs text-gray-400">rodada {gameState.round_number}</span>
+            </div>
+            {recentActions.length > 0 && (
+              <div className="panel-wood max-w-md rounded-lg px-3 py-1.5">
+                {recentActions.map((t, i) => (
+                  <p key={i} className={`text-xs ${i === 0 ? "text-gray-200" : "text-gray-500"}`}>
+                    {i === 0 ? "» " : "  "}
+                    {t}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="pointer-events-auto flex items-center gap-1.5">
+            <button
+              onClick={() => setOpenPanel((p) => (p === "score" ? null : "score"))}
+              title="Placar"
+              className="rounded border border-white/20 px-2 py-1 text-sm hover:border-white/40"
+            >
+              🏆
+            </button>
+            <button
+              onClick={() => setOpenPanel((p) => (p === "tracker" ? null : "tracker"))}
+              title="Cartas restantes"
+              className="rounded border border-white/20 px-2 py-1 text-sm hover:border-white/40"
+            >
+              🃏
+            </button>
+            <button
+              onClick={() => setOpenPanel((p) => (p === "discard" ? null : "discard"))}
+              title="Descarte"
+              className="rounded border border-white/20 px-2 py-1 text-sm hover:border-white/40"
+            >
+              🗑️
+            </button>
+            <button
+              onClick={toggleMute}
+              title={muted ? "Ativar sons" : "Silenciar"}
+              className="rounded border border-white/20 px-2 py-1 text-sm hover:border-white/40"
+            >
+              {muted ? "🔇" : "🔊"}
+            </button>
+            <RulesPanel />
+            <button
+              onClick={toggleView}
+              title="Ver em 2D"
+              className="rounded border border-white/20 px-2 py-1 text-xs hover:border-white/40"
+            >
+              2D
+            </button>
+          </div>
+        </div>
+
+        {/* Painéis flutuantes (toggle) */}
+        {openPanel && (
+          <div className="pointer-events-auto absolute right-3 top-16 z-10 max-h-[70vh] w-72 overflow-y-auto">
+            {openPanel === "score" && (
+              <Scoreboard
+                players={players}
+                currentTurnSeat={gameState.current_turn_seat}
+                protectedSeats={protectedSeats}
+                myUserId={myUserId}
+              />
+            )}
+            {openPanel === "tracker" && <CardTracker discardPile={discardPile} myHand={myHand} />}
+            {openPanel === "discard" && <DiscardPile discardPile={discardPile} />}
+          </div>
+        )}
+
+        {/* Modal central de fim de rodada/partida */}
+        {endOverlay && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+            {endOverlay}
+          </div>
+        )}
+
+        {/* HUD inferior: controles de jogada */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-3">
+          {reveal && (
+            <div className="pointer-events-auto flex items-center justify-between gap-3 rounded bg-purple-100 px-3 py-2 text-sm text-purple-800">
+              <span>{reveal}</span>
+              <button onClick={() => setReveal(null)} className="text-purple-600 hover:underline">
+                ok
+              </button>
+            </div>
+          )}
+          {error && (
+            <p className="pointer-events-auto rounded bg-red-900/80 px-3 py-1 text-sm text-red-100">{error}</p>
+          )}
+          {status === "playing" && (
+            <div className="pointer-events-auto w-[min(96vw,40rem)] panel-wood rounded-xl p-3">
+              {me?.eliminated_this_round ? (
+                <p className="text-center text-sm text-gray-400">
+                  Você foi eliminado nesta rodada. Aguarde o fim.
+                </p>
+              ) : !isMyTurn ? (
+                <p className="text-center text-sm text-gray-300">Aguardando a vez de {turnName}…</p>
+              ) : selectedCard === null ? (
+                <p className="text-center text-sm text-amber-200">
+                  Sua vez! Clique numa carta da sua mão para jogar.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">{playControls}</div>
+              )}
+            </div>
+          )}
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6 sm:px-6 sm:py-10">
       <header className="flex items-center justify-between gap-2">
@@ -248,33 +516,15 @@ export function GameBoard({ roomId, code }: { roomId: string; code: string }) {
         </div>
       )}
 
-      {view3d ? (
-        <Table3DView
-          players={players}
-          currentTurnSeat={gameState.current_turn_seat}
-          protectedSeats={protectedSeats}
-          playing={status === "playing"}
-          myUserId={myUserId}
-          lastActorSeat={lastAction && lastAction.type !== "round_start" ? lastAction.seat : null}
-          deckCount={gameState.deck_count}
-          discardPile={discardPile}
-          myHand={myHand}
-          isMyTurn={isMyTurn}
-          playable={playable}
-          selectedCard={selectedCard}
-          onSelectCard={selectCard}
-        />
-      ) : (
-        <PlayersTable
-          players={players}
-          currentTurnSeat={gameState.current_turn_seat}
-          protectedSeats={protectedSeats}
-          playing={status === "playing"}
-          myUserId={myUserId}
-          lastActorSeat={lastAction && lastAction.type !== "round_start" ? lastAction.seat : null}
-          deckCount={gameState.deck_count}
-        />
-      )}
+      <PlayersTable
+        players={players}
+        currentTurnSeat={gameState.current_turn_seat}
+        protectedSeats={protectedSeats}
+        playing={status === "playing"}
+        myUserId={myUserId}
+        lastActorSeat={lastAction && lastAction.type !== "round_start" ? lastAction.seat : null}
+        deckCount={gameState.deck_count}
+      />
 
       <DiscardPile discardPile={discardPile} />
 
