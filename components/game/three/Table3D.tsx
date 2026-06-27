@@ -463,8 +463,10 @@ function Scene(props: Table3DProps) {
         );
       })}
 
-      {/* Minha mão em leque (face para cima), clicável quando é minha vez. */}
-      <group position={[0, 0.06, 1.7]} rotation={[-0.5, 0, 0]} scale={0.9}>
+      {/* Minha mão em leque, FLUTUANDO acima do tampo (se ficar rente ao
+          feltro, a metade de baixo afunda na mesa e some — "corta no meio").
+          Por isso a elevamos em y bem acima da superfície. */}
+      <group position={[0, 0.55, 1.8]} rotation={[-0.42, 0, 0]} scale={0.9}>
         {myHand.map((v, i) => {
           const off = i - (myHand.length - 1) / 2;
           const canPlay = isMyTurn && playable.includes(v);
