@@ -5,7 +5,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Html, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 import type { Database } from "@/lib/supabase/types";
-import { CARD_DEFINITIONS, type CardValue } from "@/lib/games/love-letter/data/cards";
+import { ALL_CARD_VALUES, CARD_DEFINITIONS, type CardValue } from "@/lib/games/love-letter/data/cards";
 import { avatarForSeat } from "@/lib/games/love-letter/avatars";
 
 type RoomPlayerRow = Database["public"]["Tables"]["room_players"]["Row"];
@@ -30,6 +30,98 @@ export interface Table3DProps {
 }
 
 // ---- Texturas procedurais (geradas em canvas, sem arquivos) ---------------
+function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function wrap(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lh: number) {
+  const words = text.split(" ");
+  let line = "";
+  let yy = y;
+  for (const w of words) {
+    const test = line ? line + " " + w : w;
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line, x, yy);
+      line = w;
+      yy += lh;
+    } else {
+      line = test;
+    }
+  }
+  if (line) ctx.fillText(line, x, yy);
+}
+
+// Face da carta no estilo clássico (pergaminho + moldura + valor no canto).
+function makeCardTexture(value: CardValue): THREE.Texture {
+  const def = CARD_DEFINITIONS[value];
+  const W = 280;
+  const H = 392;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext("2d")!;
+
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, "#f5ead0");
+  bg.addColorStop(1, "#e6d2a8");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // moldura dourada
+  ctx.strokeStyle = "#b8902f";
+  ctx.lineWidth = 8;
+  rr(ctx, 10, 10, W - 20, H - 20, 16);
+  ctx.stroke();
+  ctx.strokeStyle = "#7a5a2e";
+  ctx.lineWidth = 2;
+  rr(ctx, 20, 20, W - 40, H - 40, 12);
+  ctx.stroke();
+
+  // valor no canto (cima-esquerda) e espelhado (baixo-direita)
+  const drawCorner = () => {
+    ctx.fillStyle = "#5a3a18";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "bold 42px Georgia, serif";
+    ctx.fillText(String(value), 30, 64);
+    ctx.font = "26px serif";
+    ctx.fillText(def.icon, 30, 96);
+  };
+  drawCorner();
+  ctx.save();
+  ctx.translate(W, H);
+  ctx.rotate(Math.PI);
+  drawCorner();
+  ctx.restore();
+
+  // título
+  ctx.fillStyle = "#5a3a18";
+  ctx.textAlign = "center";
+  ctx.font = "bold 30px Georgia, serif";
+  ctx.fillText(def.name.toUpperCase(), W / 2, 70);
+
+  // ilustração (emoji grande como marcador — troque por arte real se tiver)
+  ctx.font = "120px serif";
+  ctx.textBaseline = "middle";
+  ctx.fillText(def.icon, W / 2, H * 0.42);
+
+  // texto do efeito
+  ctx.fillStyle = "#4a3a22";
+  ctx.textBaseline = "alphabetic";
+  ctx.font = "15px Georgia, serif";
+  wrap(ctx, def.description, W / 2, H * 0.62, W - 70, 19);
+
+  const t = new THREE.CanvasTexture(c);
+  t.anisotropy = 4;
+  return t;
+}
+
 function makeWoodTexture(): THREE.Texture {
   const c = document.createElement("canvas");
   c.width = c.height = 512;
@@ -70,30 +162,16 @@ function makeFeltTexture(): THREE.Texture {
   return t;
 }
 
-// ---- Cartas ---------------------------------------------------------------
-function CardLabel({ value }: { value: CardValue }) {
-  const def = CARD_DEFINITIONS[value];
-  return (
-    <Html position={[0, 0, 0.03]} center distanceFactor={6} zIndexRange={[5, 0]}>
-      <div style={{ pointerEvents: "none" }} className="flex select-none flex-col items-center text-gray-900">
-        <span className="text-xl leading-none">{def.icon}</span>
-        <span className="text-[11px] font-bold leading-tight">
-          {value} · {def.name}
-        </span>
-      </div>
-    </Html>
-  );
-}
-
+// ---- Carta (caixa com face/verso/lados) -----------------------------------
 function FaceCard({
-  value,
+  faceTex,
   position,
   rotation,
   clickable = false,
   selected = false,
   onClick,
 }: {
-  value: CardValue;
+  faceTex: THREE.Texture;
   position?: [number, number, number];
   rotation?: [number, number, number];
   clickable?: boolean;
@@ -101,45 +179,30 @@ function FaceCard({
   onClick?: () => void;
 }) {
   const [hover, setHover] = useState(false);
+  const s = hover || selected ? 1.07 : 1;
   return (
     <group position={position} rotation={rotation}>
-      <group position={[0, selected ? 0.16 : 0, 0]}>
+      <group position={[0, selected ? 0.16 : 0, 0]} scale={s}>
+        {selected && (
+          <mesh position={[0, 0, -0.012]}>
+            <boxGeometry args={[0.58, 0.8, 0.01]} />
+            <meshStandardMaterial color="#f59e0b" emissive="#f59e0b" emissiveIntensity={0.7} />
+          </mesh>
+        )}
         <mesh
           castShadow
-          onClick={
-            clickable && onClick
-              ? (e) => {
-                  e.stopPropagation();
-                  onClick();
-                }
-              : undefined
-          }
-          onPointerOver={
-            clickable
-              ? () => {
-                  setHover(true);
-                  document.body.style.cursor = "pointer";
-                }
-              : undefined
-          }
-          onPointerOut={
-            clickable
-              ? () => {
-                  setHover(false);
-                  document.body.style.cursor = "auto";
-                }
-              : undefined
-          }
+          onClick={clickable && onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined}
+          onPointerOver={clickable ? () => { setHover(true); document.body.style.cursor = "pointer"; } : undefined}
+          onPointerOut={clickable ? () => { setHover(false); document.body.style.cursor = "auto"; } : undefined}
         >
           <boxGeometry args={[0.52, 0.74, 0.02]} />
-          <meshStandardMaterial
-            color={selected ? "#fff4c2" : "#f8f5ec"}
-            emissive={selected || hover ? "#f59e0b" : "#000000"}
-            emissiveIntensity={selected ? 0.55 : hover ? 0.3 : 0}
-            roughness={0.6}
-          />
+          <meshStandardMaterial attach="material-0" color="#e0d4b8" />
+          <meshStandardMaterial attach="material-1" color="#e0d4b8" />
+          <meshStandardMaterial attach="material-2" color="#e0d4b8" />
+          <meshStandardMaterial attach="material-3" color="#e0d4b8" />
+          <meshStandardMaterial attach="material-4" map={faceTex} roughness={0.55} />
+          <meshStandardMaterial attach="material-5" color="#7f1d1d" roughness={0.7} />
         </mesh>
-        <CardLabel value={value} />
       </group>
     </group>
   );
@@ -162,7 +225,6 @@ function CardBackFan({ count }: { count: number }) {
   );
 }
 
-// Anel dourado pulsante sob o jogador da vez.
 function TurnRing({ position }: { position: [number, number, number] }) {
   const mat = useRef<THREE.MeshStandardMaterial>(null);
   useFrame(({ clock }) => {
@@ -176,7 +238,6 @@ function TurnRing({ position }: { position: [number, number, number] }) {
   );
 }
 
-// Lampião balançando: ponto de luz quente + esfera emissiva que oscila.
 function SwingingLamp() {
   const light = useRef<THREE.PointLight>(null);
   const ball = useRef<THREE.Mesh>(null);
@@ -197,15 +258,14 @@ function SwingingLamp() {
   );
 }
 
-// Carta voando do assento até o descarte: começa de COSTAS (verso vermelho) e
-// vira para a FACE no meio do voo, num arco.
+// Carta voando: começa de costas e vira para a face no meio do arco.
 function FlyingCard({
   from,
-  value,
+  faceTex,
   onDone,
 }: {
   from: [number, number, number];
-  value: CardValue;
+  faceTex: THREE.Texture;
   onDone: () => void;
 }) {
   const ref = useRef<THREE.Group>(null);
@@ -222,7 +282,6 @@ function FlyingCard({
         from[1] + (DISCARD_POS[1] - from[1]) * e + Math.sin(e * Math.PI) * 0.9,
         from[2] + (DISCARD_POS[2] - from[2]) * e
       );
-      // 1 volta e meia: termina deitada (face para cima) no descarte
       ref.current.rotation.set(-Math.PI / 2 + (Math.PI / 2) * (1 - e), e * Math.PI * 3, 0);
     }
     if (t > 0.5 && !flipped) setFlipped(true);
@@ -234,7 +293,7 @@ function FlyingCard({
   return (
     <group ref={ref}>
       {flipped ? (
-        <FaceCard value={value} />
+        <FaceCard faceTex={faceTex} />
       ) : (
         <mesh castShadow>
           <boxGeometry args={[0.52, 0.74, 0.02]} />
@@ -262,6 +321,12 @@ function Scene(props: Table3DProps) {
     onSelectCard,
   } = props;
 
+  // Texturas (geradas uma vez).
+  const cardTex = useMemo(() => {
+    const map = {} as Record<CardValue, THREE.Texture>;
+    ALL_CARD_VALUES.forEach((v) => (map[v] = makeCardTexture(v)));
+    return map;
+  }, []);
   const wood = useMemo(() => makeWoodTexture(), []);
   const woodSide = useMemo(() => {
     const t = makeWoodTexture();
@@ -300,18 +365,10 @@ function Scene(props: Table3DProps) {
   return (
     <>
       <ambientLight intensity={0.5} color="#ffd9a8" />
-      <spotLight
-        position={[0, 6, 2.5]}
-        angle={0.7}
-        penumbra={0.6}
-        intensity={70}
-        color="#ffdca8"
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-      />
+      <spotLight position={[0, 6, 2.5]} angle={0.7} penumbra={0.6} intensity={70} color="#ffdca8" castShadow shadow-mapSize={[1024, 1024]} />
       <SwingingLamp />
 
-      {/* Mesa: madeira (lado/base) + feltro (topo) */}
+      {/* Mesa */}
       <mesh position={[0, -0.22, 0]} receiveShadow castShadow>
         <cylinderGeometry args={[3.1, 3.2, 0.3, 64]} />
         <meshStandardMaterial map={woodSide} color="#6b4427" roughness={0.85} />
@@ -339,11 +396,10 @@ function Scene(props: Table3DProps) {
           </div>
         </Html>
       </group>
-      {top !== undefined && <FaceCard value={top} position={DISCARD_POS} rotation={[-Math.PI / 2, 0, 0]} />}
-      {fly && <FlyingCard key={fly.id} from={fly.from} value={fly.value} onDone={() => setFly(null)} />}
+      {top !== undefined && <FaceCard faceTex={cardTex[top]} position={DISCARD_POS} rotation={[-Math.PI / 2, 0, 0]} />}
+      {fly && <FlyingCard key={fly.id} from={fly.from} faceTex={cardTex[fly.value]} onDone={() => setFly(null)} />}
 
-      {/* Adversários ao redor (avatar + cartas viradas). Não desenho a mim
-          mesmo — minha mão aparece em primeira pessoa logo abaixo. */}
+      {/* Adversários */}
       {layout.map(({ p, x, z }) => {
         const isMe = p.user_id === myUserId;
         if (isMe) return null;
@@ -386,16 +442,16 @@ function Scene(props: Table3DProps) {
       })}
 
       {/* Minha mão em leque (face para cima), clicável quando é minha vez. */}
-      <group position={[0, 0.02, 1.45]} rotation={[-0.55, 0, 0]} scale={0.8}>
+      <group position={[0, 0.04, 1.55]} rotation={[-0.5, 0, 0]} scale={0.95}>
         {myHand.map((v, i) => {
           const off = i - (myHand.length - 1) / 2;
           const canPlay = isMyTurn && playable.includes(v);
           return (
             <FaceCard
               key={`${v}-${i}`}
-              value={v}
-              position={[off * 0.62, 0, -Math.abs(off) * 0.05]}
-              rotation={[0, 0, -off * 0.12]}
+              faceTex={cardTex[v]}
+              position={[off * 0.66, 0, -Math.abs(off) * 0.05]}
+              rotation={[0, 0, -off * 0.1]}
               clickable={canPlay}
               selected={selectedCard === v}
               onClick={() => onSelectCard(v)}
@@ -414,9 +470,9 @@ export default function Table3D(props: Table3DProps) {
     <div className="h-full w-full">
       <Canvas
         shadows
-        camera={{ position: [0, 3.4, 4.6], fov: 50 }}
+        camera={{ position: [0, 3.3, 4.7], fov: 50 }}
         dpr={[1, 2]}
-        onCreated={({ camera }) => camera.lookAt(0, -0.35, -0.1)}
+        onCreated={({ camera }) => camera.lookAt(0, -0.3, 0)}
       >
         <color attach="background" args={["#160e0b"]} />
         <fog attach="fog" args={["#160e0b", 8, 14]} />
